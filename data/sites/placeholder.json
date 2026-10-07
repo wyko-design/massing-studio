@@ -1,0 +1,74 @@
+{
+  "id": "placeholder",
+  "address": "Hendrik Casimirstraat 8, 2628KJ Delft",
+  "parcelId": "DEL00 K 2410",
+  "excerpts": [],
+  "constraints": {
+    "allowedFunctions": {
+      "value": ["Wonen"],
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "bouwvlak": {
+      "value": null,
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "maxHeight": {
+      "value": 15,
+      "unit": "m",
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "maxGutterHeight": {
+      "value": null,
+      "unit": "m",
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "buildingLine": {
+      "value": null,
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "setbacks": {
+      "street": {
+        "value": 2,
+        "unit": "m",
+        "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+      },
+      "side": {
+        "value": 0,
+        "unit": "m",
+        "prov": { "source": "Placeholder (terraced plot, party walls on the side boundaries)", "status": "assumed" }
+      },
+      "rear": {
+        "value": 5,
+        "unit": "m",
+        "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+      }
+    },
+    "streetSide": {
+      "value": 65,
+      "unit": "°",
+      "prov": {
+        "source": "Placeholder: house and address point sit at the ENE end of the plot, open space beyond it",
+        "status": "assumed"
+      }
+    },
+    "maxCoverage": {
+      "value": 0.6,
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "maxFAR": {
+      "value": null,
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "parkingNorm": {
+      "value": null,
+      "unit": "spaces/unit",
+      "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+    },
+    "notes": [
+      {
+        "value": "Placeholder values. Replace them with the omgevingsplan rules for the real site (milestone M7).",
+        "prov": { "source": "Placeholder (no plan rules collected yet)", "status": "assumed" }
+      }
+    ]
+  }
+}

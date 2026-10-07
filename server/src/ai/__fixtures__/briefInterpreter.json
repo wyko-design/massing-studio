@@ -1,0 +1,199 @@
+{
+  "input": {
+    "brief": "Starter apartments for young professionals, around 14 homes. Lots of daylight matters more than squeezing in every unit. Keep it low towards the neighbours at the back and leave some garden space. A simple form is fine; no courtyard.",
+    "programme": {
+      "targetUnits": 12,
+      "avgUnitSize": 65,
+      "netToGross": 0.75
+    },
+    "constraints": {
+      "allowedFunctions": {
+        "value": [
+          "Wonen"
+        ],
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "bouwvlak": {
+        "value": null,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "maxHeight": {
+        "value": 15,
+        "unit": "m",
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "maxGutterHeight": {
+        "value": null,
+        "unit": "m",
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "buildingLine": {
+        "value": null,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "setbacks": {
+        "street": {
+          "value": 2,
+          "unit": "m",
+          "prov": {
+            "source": "Placeholder (no plan rules collected yet)",
+            "status": "assumed"
+          }
+        },
+        "side": {
+          "value": 0,
+          "unit": "m",
+          "prov": {
+            "source": "Placeholder (terraced plot, party walls on the side boundaries)",
+            "status": "assumed"
+          }
+        },
+        "rear": {
+          "value": 5,
+          "unit": "m",
+          "prov": {
+            "source": "Placeholder (no plan rules collected yet)",
+            "status": "assumed"
+          }
+        }
+      },
+      "maxCoverage": {
+        "value": 0.6,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "maxFAR": {
+        "value": null,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "parkingNorm": {
+        "value": null,
+        "unit": "spaces/unit",
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "streetSide": {
+        "value": 65,
+        "unit": "°",
+        "prov": {
+          "source": "Placeholder: house and address point sit at the ENE end of the plot, open space beyond it",
+          "status": "assumed"
+        }
+      },
+      "notes": [
+        {
+          "value": "Placeholder values. Replace them with the omgevingsplan rules for the real site (milestone M7).",
+          "prov": {
+            "source": "Placeholder (no plan rules collected yet)",
+            "status": "assumed"
+          }
+        }
+      ]
+    }
+  },
+  "steps": [
+    {
+      "output": {
+        "programme": {
+          "targetUnits": {
+            "value": 14,
+            "briefQuote": "around 14 homes"
+          },
+          "avgUnitSize": {
+            "value": 45,
+            "briefQuote": "Starter apartments"
+          },
+          "netToGross": null
+        },
+        "priorities": {
+          "units": 2,
+          "daylight": 5,
+          "lowProfile": 4,
+          "openSpace": 3,
+          "simplicity": 4
+        },
+        "typologyHints": [
+          "slab",
+          "l_block"
+        ],
+        "summary": "A modest block of starter apartments for young professionals, where good daylight is valued over maximising the number of homes. The building should step down towards the neighbours at the back, keep some garden, and stay a simple form without a courtyard.",
+        "unclear": [
+          "How low the building should be at the back is not stated, only that it should be low towards the neighbours.",
+          "How much garden space to keep is not quantified.",
+          "The brief does not say which form is preferred beyond a simple one with no courtyard, so a slab or an L-block both fit.",
+          "The site rules are placeholders, so the real height, coverage and setbacks may change what fits."
+        ]
+      },
+      "model": "claude-sonnet-5-5",
+      "costUsd": 0.29423
+    }
+  ],
+  "result": {
+    "ok": true,
+    "data": {
+      "programme": {
+        "targetUnits": 14,
+        "avgUnitSize": 45,
+        "netToGross": 0.75
+      },
+      "changes": [
+        {
+          "field": "targetUnits",
+          "briefQuote": "around 14 homes"
+        },
+        {
+          "field": "avgUnitSize",
+          "briefQuote": "Starter apartments"
+        }
+      ],
+      "priorities": {
+        "units": 2,
+        "daylight": 5,
+        "lowProfile": 4,
+        "openSpace": 3,
+        "simplicity": 4
+      },
+      "typologyHints": [
+        "slab",
+        "l_block"
+      ],
+      "summary": "A modest block of starter apartments for young professionals, where good daylight is valued over maximising the number of homes. The building should step down towards the neighbours at the back, keep some garden, and stay a simple form without a courtyard.",
+      "unclear": [
+        "How low the building should be at the back is not stated, only that it should be low towards the neighbours.",
+        "How much garden space to keep is not quantified.",
+        "The brief does not say which form is preferred beyond a simple one with no courtyard, so a slab or an L-block both fit.",
+        "The site rules are placeholders, so the real height, coverage and setbacks may change what fits."
+      ],
+      "clamps": []
+    },
+    "meta": {
+      "model": "claude-sonnet-5-5",
+      "promptVersion": "briefInterpreter.v1",
+      "attempts": 1,
+      "costUsd": 0.29423,
+      "cached": false
+    }
+  }
+}

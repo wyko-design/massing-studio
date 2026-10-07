@@ -1,0 +1,65 @@
+{
+  "id": "<site-id, same as the file name and SITE_ID>",
+  "address": "<street + number, postcode, Delft>",
+  "parcelId": "<Kadaster id exactly as the app shows it, e.g. DEL00 K 2410>",
+  "excerpts": [
+    {
+      "title": "<article or map label, e.g. Artikel 23.2.1 Bouwregels>",
+      "text": "<exact pasted Dutch rule text>",
+      "url": "<Regels op de kaart URL>"
+    }
+  ],
+  "constraints": {
+    "allowedFunctions": {
+      "value": null,
+      "prov": { "source": "<URL or document>", "quote": "<exact rule text>", "status": "verified" }
+    },
+    "bouwvlak": {
+      "value": null,
+      "prov": { "source": "<plan map, traced by hand>", "status": "verified" }
+    },
+    "maxHeight": {
+      "value": null,
+      "unit": "m",
+      "prov": { "source": "<URL or document>", "quote": "<exact rule text>", "status": "verified" }
+    },
+    "maxGutterHeight": {
+      "value": null,
+      "unit": "m",
+      "prov": { "source": "<URL or document>", "quote": "<exact rule text>", "status": "verified" }
+    },
+    "buildingLine": {
+      "value": null,
+      "prov": { "source": "<plan map, traced by hand>", "status": "verified" }
+    },
+    "setbacks": {
+      "street": { "value": null, "unit": "m", "prov": { "source": "<URL or document>", "status": "verified" } },
+      "side": { "value": null, "unit": "m", "prov": { "source": "<URL or document>", "status": "verified" } },
+      "rear": { "value": null, "unit": "m", "prov": { "source": "<URL or document>", "status": "verified" } }
+    },
+    "streetSide": {
+      "value": null,
+      "unit": "°",
+      "prov": { "source": "<how it was determined, e.g. BGT map>", "status": "verified" }
+    },
+    "maxCoverage": {
+      "value": null,
+      "prov": { "source": "<URL or document>", "quote": "<exact rule text>", "status": "verified" }
+    },
+    "maxFAR": {
+      "value": null,
+      "prov": { "source": "<URL or document>", "status": "verified" }
+    },
+    "parkingNorm": {
+      "value": null,
+      "unit": "spaces/unit",
+      "prov": { "source": "<Nota parkeernormen Delft>", "quote": "<exact rule text>", "status": "verified" }
+    },
+    "notes": [
+      {
+        "value": "<rule the generator cannot use but the user must see, e.g. an aanduiding>",
+        "prov": { "source": "<URL or document>", "quote": "<exact rule text>", "status": "verified" }
+      }
+    ]
+  }
+}

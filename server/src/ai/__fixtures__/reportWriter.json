@@ -1,0 +1,285 @@
+{
+  "input": {
+    "address": "Hendrik Casimirstraat 8, 2628KJ Delft",
+    "parcelId": "DEL00 K 2410",
+    "parcelAreaM2": 111,
+    "constraints": {
+      "allowedFunctions": {
+        "value": [
+          "Wonen"
+        ],
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "bouwvlak": {
+        "value": null,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "maxHeight": {
+        "value": 15,
+        "unit": "m",
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "maxGutterHeight": {
+        "value": null,
+        "unit": "m",
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "buildingLine": {
+        "value": null,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "setbacks": {
+        "street": {
+          "value": 2,
+          "unit": "m",
+          "prov": {
+            "source": "Placeholder (no plan rules collected yet)",
+            "status": "assumed"
+          }
+        },
+        "side": {
+          "value": 0,
+          "unit": "m",
+          "prov": {
+            "source": "Placeholder (terraced plot, party walls on the side boundaries)",
+            "status": "assumed"
+          }
+        },
+        "rear": {
+          "value": 5,
+          "unit": "m",
+          "prov": {
+            "source": "Placeholder (no plan rules collected yet)",
+            "status": "assumed"
+          }
+        }
+      },
+      "maxCoverage": {
+        "value": 0.6,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "maxFAR": {
+        "value": null,
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "parkingNorm": {
+        "value": null,
+        "unit": "spaces/unit",
+        "prov": {
+          "source": "Placeholder (no plan rules collected yet)",
+          "status": "assumed"
+        }
+      },
+      "streetSide": {
+        "value": 65,
+        "unit": "°",
+        "prov": {
+          "source": "Placeholder: house and address point sit at the ENE end of the plot, open space beyond it",
+          "status": "assumed"
+        }
+      },
+      "notes": [
+        {
+          "value": "Placeholder values. Replace them with the omgevingsplan rules for the real site (milestone M7).",
+          "prov": {
+            "source": "Placeholder (no plan rules collected yet)",
+            "status": "assumed"
+          }
+        }
+      ]
+    },
+    "options": [
+      {
+        "id": "A",
+        "name": "Sunlit Slab",
+        "intent": "A slim east-west bar turned to face north and south, so every home gets long daylit facades. Kept at a moderate height with a pitched roof to sit gently beside the neighbours, leaving garden space around it.",
+        "tradeOffs": [
+          "Fewer homes than the programme asks",
+          "Narrow plan limits layout variety",
+          "Pitched roof adds height"
+        ],
+        "params": {
+          "typology": "slab",
+          "floors": 3,
+          "groundFloorHeight": 3.5,
+          "floorHeight": 3,
+          "depth": 9,
+          "alignment": "sun",
+          "coverageTarget": 0.5,
+          "roof": "pitched",
+          "colour": "#c23350"
+        },
+        "clamps": [],
+        "metrics": {
+          "footprint": 55.262500332576664,
+          "gfa": 165.78750099772998,
+          "far": 1.4935810900696393,
+          "coverage": 0.49786036335654654,
+          "height": 13.27594834029776,
+          "floors": 3,
+          "estUnits": 2,
+          "facadeSunScore": 0.5241145361434567
+        }
+      },
+      {
+        "id": "B",
+        "name": "Street L-Block",
+        "intent": "An L-shaped block following the street edge, with the second wing stepping toward the back to catch more sun and give more homes. Stays at the full allowed height to test how close the brief can get to its homes target.",
+        "tradeOffs": [
+          "Tallest option towards the back neighbours",
+          "Less garden space",
+          "More complex corner and structure"
+        ],
+        "params": {
+          "typology": "l_block",
+          "floors": 4,
+          "groundFloorHeight": 3.5,
+          "floorHeight": 3,
+          "depth": 7,
+          "alignment": "street",
+          "coverageTarget": 0.6,
+          "roof": "flat",
+          "colour": "#2f6fb0"
+        },
+        "clamps": [],
+        "metrics": {
+          "footprint": 66.49079169377276,
+          "gfa": 265.96316677509105,
+          "far": 2.396064565541361,
+          "coverage": 0.5990161413853402,
+          "height": 12.5,
+          "floors": 4,
+          "estUnits": 4,
+          "facadeSunScore": 0.5730617685827581
+        }
+      },
+      {
+        "id": "C",
+        "name": "Low Garden Bar",
+        "intent": "A simple low bar with a flat roof that stays modest toward the rear neighbours and frees up as much garden as possible. The plainest and cheapest form to build, with decent daylight from a shallow depth.",
+        "tradeOffs": [
+          "Fewest homes of the three",
+          "Street alignment gives less ideal sun orientation",
+          "Low height leaves allowed volume unused"
+        ],
+        "params": {
+          "typology": "slab",
+          "floors": 2,
+          "groundFloorHeight": 3.2,
+          "floorHeight": 2.9,
+          "depth": 7,
+          "alignment": "street",
+          "coverageTarget": 0.35,
+          "roof": "flat",
+          "colour": "#d98a1f"
+        },
+        "clamps": [],
+        "metrics": {
+          "footprint": 38.73150138779359,
+          "gfa": 77.46300277558719,
+          "far": 0.6978648898701548,
+          "coverage": 0.3489324449350774,
+          "height": 6.1,
+          "floors": 2,
+          "estUnits": 1,
+          "facadeSunScore": 0.5307242394824108
+        }
+      }
+    ]
+  },
+  "steps": [
+    {
+      "output": {
+        "sections": [
+          {
+            "id": "site",
+            "title": "The plot",
+            "text": "The study covers a small residential plot at {{site.address}}, registered as cadastral parcel {{site.parcelId}}. The parcel measures {{site.parcelArea}}, which is a tight footprint for multi-home development. The street lies on a bearing of {{rule.streetSide}} from the parcel, and that bearing is an assumed value. The study is used to compare early massing ideas on this constrained site, with attention to daylight, garden space and the relationship to neighbours."
+          },
+          {
+            "id": "constraints",
+            "title": "Planning rules and their firmness",
+            "text": "Every planning rule used here is assumed, not verified, and none has been extracted from a statutory plan or overridden by the user. The assumed allowed function is {{rule.allowedFunctions}}, with a maximum building height of {{rule.maxHeight}} and a maximum coverage of {{rule.maxCoverage}}. Assumed setbacks are {{rule.setbacks.street}} to the street, {{rule.setbacks.side}} at the sides and {{rule.setbacks.rear}} at the rear. The street side bearing is also assumed. Unknowns include any floor area ratio cap, parking requirements, daylight rules for neighbours, heritage or local plan provisions, and the true boundary geometry. All of these must be checked against the current zoning plan before anything is relied upon."
+          },
+          {
+            "id": "options",
+            "title": "The three options",
+            "text": "Option A, the Sunlit Slab, is a slim east-west bar with a pitched roof. It covers {{A.footprint}} over {{A.floors}} floors, reaching {{A.height}} and giving {{A.gfa}} of floor area and an estimated {{A.units}} homes. It aims at long daylit north and south facades and leaves garden around it, but it gives up home count, plan variety and some height because of the pitched roof. Option B, the Street L-Block, follows the street edge with a wing stepping toward the back. It covers {{B.footprint}} over {{B.floors}} floors at {{B.height}}, with {{B.gfa}} of floor area and an estimated {{B.units}} homes. It pushes toward the home target, reaching the assumed coverage limit of {{rule.maxCoverage}}, so it is clamped by that rule. It gives up garden space, is the tallest toward the back neighbours and has a more complex corner and structure. Option C, the Low Garden Bar, is a flat-roofed bar covering {{C.footprint}} over {{C.floors}} floors at {{C.height}}, with {{C.gfa}} of floor area and an estimated {{C.units}} home. It is the plainest and cheapest form and frees the most garden, but it yields the fewest homes, has a less ideal sun orientation because it aligns to the street, and leaves allowed volume unused."
+          },
+          {
+            "id": "comparison",
+            "title": "How the options compare",
+            "text": "Floor area ratio rises from {{C.far}} for option C, to {{A.far}} for option A, to {{B.far}} for option B, and coverage follows the same order at {{C.coverage}}, {{A.coverage}} and {{B.coverage}}. Option B therefore serves the priority of maximising homes and floor area, at the cost of garden space and a taller mass toward the rear. Option C serves the priorities of low height, open garden and simple construction, but delivers the least housing. Option A sits between them, favouring daylit facades and a moderate presence beside neighbours. Facade sun scores are close, at {{A.sun}} for A, {{B.sun}} for B and {{C.sun}} for C, so daylight alone does not separate the options strongly. Which option is preferable depends on how the brief weighs housing yield against garden, height and cost. This comparison does not judge any option as compliant or viable."
+          },
+          {
+            "id": "limitations",
+            "title": "Limitations",
+            "text": "This is an indicative early massing study. It is not a permit check, a zoning compliance review or a financial appraisal. Boundary geometry is indicative and may differ from the surveyed cadastral boundary. All planning values are assumed and must be checked against the applicable plan and with the municipality. Unit counts, floor areas and sun scores are simplified estimates and should not be used for design decisions, costing or approvals without further professional work."
+          }
+        ]
+      },
+      "model": "claude-sonnet-5-5",
+      "costUsd": 0.166558
+    }
+  ],
+  "result": {
+    "ok": true,
+    "data": {
+      "sections": [
+        {
+          "id": "site",
+          "title": "The plot",
+          "text": "The study covers a small residential plot at Hendrik Casimirstraat 8, 2628KJ Delft, registered as cadastral parcel DEL00 K 2410. The parcel measures 111 m², which is a tight footprint for multi-home development. The street lies on a bearing of 65° from the parcel, and that bearing is an assumed value. The study is used to compare early massing ideas on this constrained site, with attention to daylight, garden space and the relationship to neighbours."
+        },
+        {
+          "id": "constraints",
+          "title": "Planning rules and their firmness",
+          "text": "Every planning rule used here is assumed, not verified, and none has been extracted from a statutory plan or overridden by the user. The assumed allowed function is Wonen, with a maximum building height of 15 m and a maximum coverage of 0.6. Assumed setbacks are 2 m to the street, 0 m at the sides and 5 m at the rear. The street side bearing is also assumed. Unknowns include any floor area ratio cap, parking requirements, daylight rules for neighbours, heritage or local plan provisions, and the true boundary geometry. All of these must be checked against the current zoning plan before anything is relied upon."
+        },
+        {
+          "id": "options",
+          "title": "The three options",
+          "text": "Option A, the Sunlit Slab, is a slim east-west bar with a pitched roof. It covers 55 m² over 3 floors, reaching 13.3 m and giving 166 m² of floor area and an estimated 2 homes. It aims at long daylit north and south facades and leaves garden around it, but it gives up home count, plan variety and some height because of the pitched roof. Option B, the Street L-Block, follows the street edge with a wing stepping toward the back. It covers 66 m² over 4 floors at 12.5 m, with 266 m² of floor area and an estimated 4 homes. It pushes toward the home target, reaching the assumed coverage limit of 0.6, so it is clamped by that rule. It gives up garden space, is the tallest toward the back neighbours and has a more complex corner and structure. Option C, the Low Garden Bar, is a flat-roofed bar covering 39 m² over 2 floors at 6.1 m, with 77 m² of floor area and an estimated 1 home. It is the plainest and cheapest form and frees the most garden, but it yields the fewest homes, has a less ideal sun orientation because it aligns to the street, and leaves allowed volume unused."
+        },
+        {
+          "id": "comparison",
+          "title": "How the options compare",
+          "text": "Floor area ratio rises from 0.70 for option C, to 1.49 for option A, to 2.40 for option B, and coverage follows the same order at 0.35, 0.50 and 0.60. Option B therefore serves the priority of maximising homes and floor area, at the cost of garden space and a taller mass toward the rear. Option C serves the priorities of low height, open garden and simple construction, but delivers the least housing. Option A sits between them, favouring daylit facades and a moderate presence beside neighbours. Facade sun scores are close, at 0.52 for A, 0.57 for B and 0.53 for C, so daylight alone does not separate the options strongly. Which option is preferable depends on how the brief weighs housing yield against garden, height and cost. This comparison does not judge any option as compliant or viable."
+        },
+        {
+          "id": "limitations",
+          "title": "Limitations",
+          "text": "This is an indicative early massing study. It is not a permit check, a zoning compliance review or a financial appraisal. Boundary geometry is indicative and may differ from the surveyed cadastral boundary. All planning values are assumed and must be checked against the applicable plan and with the municipality. Unit counts, floor areas and sun scores are simplified estimates and should not be used for design decisions, costing or approvals without further professional work."
+        }
+      ]
+    },
+    "meta": {
+      "model": "claude-sonnet-5-5",
+      "promptVersion": "reportWriter.v1",
+      "attempts": 1,
+      "costUsd": 0.166558,
+      "cached": false
+    }
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "input": [
+    {
+      "title": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text)",
+      "url": "sample:omgevingsplan-wonen",
+      "text": "Artikel 12 Wonen\n12.1 Bestemmingsomschrijving\nDe voor 'Wonen' aangewezen gronden zijn bestemd voor wonen, met daarbij behorende tuinen, erven en parkeervoorzieningen.\n12.2 Bouwregels\na. hoofdgebouwen worden uitsluitend binnen het bouwvlak gebouwd;\nb. de bouwhoogte van een hoofdgebouw bedraagt ten hoogste 13 m;\nc. de goothoogte van een hoofdgebouw bedraagt ten hoogste 10,5 m;\nd. het bebouwingspercentage van het bouwperceel bedraagt ten hoogste 60%;\ne. de afstand van een hoofdgebouw tot de achterste perceelsgrens bedraagt ten minste 5 m;\nf. hoofdgebouwen worden met de voorgevel in de naar de weg gekeerde bouwgrens gebouwd;\ng. ter plaatse van de aanduiding 'maximum aantal bouwlagen' mag het aantal bouwlagen niet meer bedragen dan aangegeven.\n12.3 Parkeren\nBij het bouwen van woningen wordt voorzien in ten minste 1,2 parkeerplaats per woning op eigen terrein."
+    },
+    {
+      "title": "SAMPLE omgevingsplan, afwijken van de bouwregels (fictitious test text)",
+      "url": "sample:omgevingsplan-afwijken",
+      "text": "12.4 Afwijken van de bouwregels\nHet bevoegd gezag kan bij een omgevingsvergunning afwijken van lid 12.2 onder b voor een overschrijding van de bouwhoogte met ten hoogste 2 m, mits de stedenbouwkundige kwaliteit niet onevenredig wordt aangetast."
+    }
+  ],
+  "steps": [
+    {
+      "output": {
+        "fields": [
+          {
+            "path": "allowedFunctions",
+            "value": [
+              "Wonen"
+            ],
+            "quote": "De voor 'Wonen' aangewezen gronden zijn bestemd voor wonen, met daarbij behorende tuinen, erven en parkeervoorzieningen.",
+            "excerptIndex": 0
+          },
+          {
+            "path": "maxHeight",
+            "value": 13,
+            "quote": "de bouwhoogte van een hoofdgebouw bedraagt ten hoogste 13 m;",
+            "excerptIndex": 0
+          },
+          {
+            "path": "maxGutterHeight",
+            "value": 10.5,
+            "quote": "de goothoogte van een hoofdgebouw bedraagt ten hoogste 10,5 m;",
+            "excerptIndex": 0
+          },
+          {
+            "path": "maxCoverage",
+            "value": 0.6,
+            "quote": "het bebouwingspercentage van het bouwperceel bedraagt ten hoogste 60%;",
+            "excerptIndex": 0
+          },
+          {
+            "path": "setbacks.rear",
+            "value": 5,
+            "quote": "de afstand van een hoofdgebouw tot de achterste perceelsgrens bedraagt ten minste 5 m;",
+            "excerptIndex": 0
+          },
+          {
+            "path": "parkingNorm",
+            "value": 1.2,
+            "quote": "Bij het bouwen van woningen wordt voorzien in ten minste 1,2 parkeerplaats per woning op eigen terrein.",
+            "excerptIndex": 0
+          }
+        ],
+        "notes": [
+          {
+            "text": "Main buildings must be built only within the bouwvlak.",
+            "quote": "hoofdgebouwen worden uitsluitend binnen het bouwvlak gebouwd;",
+            "excerptIndex": 0
+          },
+          {
+            "text": "The front facade of the main building must be built on the building line facing the road, so the street setback is determined by the bouwgrens rather than a stated distance.",
+            "quote": "hoofdgebouwen worden met de voorgevel in de naar de weg gekeerde bouwgrens gebouwd;",
+            "excerptIndex": 0
+          },
+          {
+            "text": "Where the aanduiding for maximum number of building layers applies, the number of layers may not exceed the number shown on the plan map.",
+            "quote": "ter plaatse van de aanduiding 'maximum aantal bouwlagen' mag het aantal bouwlagen niet meer bedragen dan aangegeven.",
+            "excerptIndex": 0
+          },
+          {
+            "text": "Afwijkingsbevoegdheid: the competent authority may allow the building height to be exceeded by a limited amount via an omgevingsvergunning, provided urban design quality is not disproportionately harmed.",
+            "quote": "Het bevoegd gezag kan bij een omgevingsvergunning afwijken van lid 12.2 onder b voor een overschrijding van de bouwhoogte met ten hoogste 2 m, mits de stedenbouwkundige kwaliteit niet onevenredig wordt aangetast.",
+            "excerptIndex": 1
+          }
+        ]
+      },
+      "model": "claude-sonnet-5-5",
+      "costUsd": 0.162592
+    }
+  ],
+  "result": {
+    "ok": true,
+    "data": {
+      "fields": [
+        {
+          "path": "allowedFunctions",
+          "constrained": {
+            "value": [
+              "Wonen"
+            ],
+            "prov": {
+              "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+              "quote": "De voor 'Wonen' aangewezen gronden zijn bestemd voor wonen, met daarbij behorende tuinen, erven en parkeervoorzieningen.",
+              "status": "extracted"
+            }
+          }
+        },
+        {
+          "path": "maxHeight",
+          "constrained": {
+            "value": 13,
+            "unit": "m",
+            "prov": {
+              "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+              "quote": "de bouwhoogte van een hoofdgebouw bedraagt ten hoogste 13 m;",
+              "status": "extracted"
+            }
+          }
+        },
+        {
+          "path": "maxGutterHeight",
+          "constrained": {
+            "value": 10.5,
+            "unit": "m",
+            "prov": {
+              "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+              "quote": "de goothoogte van een hoofdgebouw bedraagt ten hoogste 10,5 m;",
+              "status": "extracted"
+            }
+          }
+        },
+        {
+          "path": "maxCoverage",
+          "constrained": {
+            "value": 0.6,
+            "prov": {
+              "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+              "quote": "het bebouwingspercentage van het bouwperceel bedraagt ten hoogste 60%;",
+              "status": "extracted"
+            }
+          }
+        },
+        {
+          "path": "setbacks.rear",
+          "constrained": {
+            "value": 5,
+            "unit": "m",
+            "prov": {
+              "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+              "quote": "de afstand van een hoofdgebouw tot de achterste perceelsgrens bedraagt ten minste 5 m;",
+              "status": "extracted"
+            }
+          }
+        },
+        {
+          "path": "parkingNorm",
+          "constrained": {
+            "value": 1.2,
+            "unit": "spaces/unit",
+            "prov": {
+              "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+              "quote": "Bij het bouwen van woningen wordt voorzien in ten minste 1,2 parkeerplaats per woning op eigen terrein.",
+              "status": "extracted"
+            }
+          }
+        }
+      ],
+      "notes": [
+        {
+          "value": "Main buildings must be built only within the bouwvlak.",
+          "prov": {
+            "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+            "quote": "hoofdgebouwen worden uitsluitend binnen het bouwvlak gebouwd;",
+            "status": "extracted"
+          }
+        },
+        {
+          "value": "The front facade of the main building must be built on the building line facing the road, so the street setback is determined by the bouwgrens rather than a stated distance.",
+          "prov": {
+            "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+            "quote": "hoofdgebouwen worden met de voorgevel in de naar de weg gekeerde bouwgrens gebouwd;",
+            "status": "extracted"
+          }
+        },
+        {
+          "value": "Where the aanduiding for maximum number of building layers applies, the number of layers may not exceed the number shown on the plan map.",
+          "prov": {
+            "source": "SAMPLE omgevingsplan, artikel Wonen (fictitious test text) (sample:omgevingsplan-wonen)",
+            "quote": "ter plaatse van de aanduiding 'maximum aantal bouwlagen' mag het aantal bouwlagen niet meer bedragen dan aangegeven.",
+            "status": "extracted"
+          }
+        },
+        {
+          "value": "Afwijkingsbevoegdheid: the competent authority may allow the building height to be exceeded by a limited amount via an omgevingsvergunning, provided urban design quality is not disproportionately harmed.",
+          "prov": {
+            "source": "SAMPLE omgevingsplan, afwijken van de bouwregels (fictitious test text) (sample:omgevingsplan-afwijken)",
+            "quote": "Het bevoegd gezag kan bij een omgevingsvergunning afwijken van lid 12.2 onder b voor een overschrijding van de bouwhoogte met ten hoogste 2 m, mits de stedenbouwkundige kwaliteit niet onevenredig wordt aangetast.",
+            "status": "extracted"
+          }
+        }
+      ]
+    },
+    "meta": {
+      "model": "claude-sonnet-5-5",
+      "promptVersion": "constraintInterpreter.v1",
+      "attempts": 1,
+      "costUsd": 0.162592,
+      "cached": false
+    }
+  }
+}

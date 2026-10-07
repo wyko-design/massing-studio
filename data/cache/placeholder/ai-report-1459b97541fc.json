@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "data": {
+    "sections": [
+      {
+        "id": "site",
+        "title": "Site and context",
+        "text": "The study covers the plot at Hendrik Casimirstraat 8, 2628KJ Delft, registered as cadastral parcel DEL00 K 2410. The parcel measures 111 m², a small urban plot where every setback and height choice has a large effect on what can be built. The street side is taken to lie on a bearing of 65° from the parcel, but this is an assumed value. The surrounding context, including neighbouring building heights and orientations, has not been measured in this study."
+      },
+      {
+        "id": "constraints",
+        "title": "Planning constraints",
+        "text": "None of the rules used here is verified. Every value is assumed and must be confirmed against the current zoning plan. The allowed function is assumed to be Wonen. The maximum height is assumed to be 15 m. Setbacks are assumed to be 2 m at the street, 0 m at the sides and 5 m at the rear. Maximum coverage is assumed to be 0.6 as a share of the plot. No value was extracted from a source document or set by user override. Unknowns include the daylight rules, parking requirements, any neighbour-related restrictions, heritage or protected-area status, and the exact method used to measure height and coverage."
+      },
+      {
+        "id": "options",
+        "title": "The three options",
+        "text": "Option A, the Tall Street Slab, is a simple bar placed against the street edge. It stacks 4 floors to a height of 12.5 m, with a footprint of 66 m² and gross floor area of 266 m², giving an estimated 3 homes. It gives up open space, daylight on the lower floors and a modest presence next to neighbours. Its coverage of 0.60 sits at the assumed coverage limit, so the footprint is effectively limited by that rule. Option B, the Sunlit L-Block, turns an L-shaped form to face north and south. It has 3 floors at 9.5 m, a footprint of 55 m² and gross floor area of 166 m², for an estimated 1 home. It keeps a sheltered corner of open ground but is more complex to build and offers fewer homes than Option A. Option C, the Low Pitched Bar, is a compact bar with a pitched roof that blends with neighbouring houses. It has 2 floors at 8.7 m, a footprint of 39 m² and gross floor area of 77 m², for an estimated 0 homes. It leaves most of the plot open but badly under-delivers the programme, and the pitched roof adds cost and height."
+      },
+      {
+        "id": "comparison",
+        "title": "Comparison of options",
+        "text": "The options trade homes against open space and low profile. Option A has the highest floor area ratio at 2.39 and the most homes, so it serves housing numbers and a repetitive, buildable form. Option B has a floor area ratio of 1.49 and coverage of 0.50. It balances homes with daylight and open ground. Option C has a floor area ratio of 0.70 and coverage of 0.35. It serves low profile, openness and simplicity, but delivers little housing. The facade sun scores are 0.58 for Option A, 0.56 for Option B and 0.51 for Option C. These are close, so daylight on its own does not separate the options strongly. This comparison describes priorities only. It does not show that any option is compliant or viable."
+      },
+      {
+        "id": "limitations",
+        "title": "Limitations",
+        "text": "This is an indicative early massing study. It is not a permit check and not a financial appraisal. Boundary geometry is indicative and may differ from the surveyed parcel. All planning values are assumed and must be checked against the current zoning plan and with the municipality before any design decision relies on them. Unit counts, sun scores and floor areas are simple estimates and do not replace detailed design, daylight analysis or cost advice."
+      }
+    ]
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "reportWriter.v1",
+    "attempts": 1,
+    "costUsd": 0.027085,
+    "cached": false
+  }
+}

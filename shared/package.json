@@ -1,0 +1,21 @@
+{
+  "name": "@massing/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "polygon-clipping": "^0.15.7",
+    "proj4": "^2.22.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16"
+  }
+}

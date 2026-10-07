@@ -1,0 +1,416 @@
+# PROGRESS
+
+Handoff log between Claude Code sessions. Append one entry per session at the bottom of the Log, using this template.
+
+## Template
+### YYYY-MM-DD · P<n> — <prompt name> (M<x>)
+- **Built:**
+- **Decisions:**
+- **Deviations from SPEC.md:**
+- **Open issues:**
+- **Next:** P<n> — <prompt name>
+
+---
+
+## Log
+
+### 2026-10-06 · P0 — Repo plan + CLAUDE.md (setup)
+- **Built:** `CLAUDE.md`, `PROGRESS.md`, `.gitattributes`, `.nvmrc` (24.18.0), `.env.example`, `.gitignore`. No application code, no package.json, no installs.
+- **Decisions:**
+  - Toolchain on the dev PC: Node 24.18.0 LTS, npm 11.16.0. `.nvmrc` = `24.18.0`; root `engines.node` = `>=24.18.0 <25`.
+  - Repo = npm workspaces: `client/` (@massing/client), `server/` (@massing/server), `shared/` (@massing/shared). `shared` is consumed as TS source (`"exports": "./src/index.ts"`), no build step.
+  - Folder layout:
+    ```
+    client/src/{screens,viewer,state,api}      Vite + React + R3F; vite proxy /api → http://127.0.0.1:8787
+    server/src/{routes,providers/nl,cache,prompts}   Hono on Node; loads .env via process.loadEnvFile
+    shared/src/{schemas,providers.ts,geo,fixtures,massing}   pure isomorphic TS (no fs, no DOM)
+    data/sites/<id>.json                       site fixtures (placeholder.json + template at M2)
+    data/cache/<site>/                         committed for the demo site
+    docs/references/                           reference PNGs
+    ```
+    Root: `package.json`, `package-lock.json` (committed), `tsconfig.base.json` (strict, forceConsistentCasingInFileNames), `vitest.config.ts` (projects: shared, server). Tests colocated as `*.test.ts`.
+  - Package list M0–M1 (latest stable at install; P1 records resolved versions here):
+    - root dev: `typescript` (JS compiler, not TS 7 native), `vitest`, `concurrently`, `rimraf`, `@types/node`
+    - client: `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `postprocessing`, `zustand`, `suncalc`, `@massing/shared`; dev: `vite`, `@vitejs/plugin-react`, `@types/react`, `@types/react-dom`, `@types/three`, `@types/suncalc`
+    - server: `hono`, `@hono/node-server`, `@massing/shared`; dev: `tsx`
+    - shared: `zod` (v4), `proj4`, `@turf/boolean-point-in-polygon`; dev: `@types/geojson` (+ `@types/proj4` only if proj4's bundled types are missing)
+    - N8AO is expected via `@react-three/postprocessing`; add `n8ao` explicitly if missing.
+    - Later: `polygon-clipping` (M2), `@anthropic-ai/sdk` (M4), `pdf-lib`/`jsPDF` (M5).
+  - Native binaries: only the prebuilt per-platform binaries of esbuild/rollup (or rolldown) via vite, vitest and tsx, plus macOS-only `fsevents`. Avoided on purpose: `@vitejs/plugin-react-swc`, TS 7 native preview, `canvas`, `sharp`, node-gyp packages.
+- **Deviations from SPEC.md:**
+  - Modular `@turf/*` (planar-safe functions only) instead of `@turf/turf`. Turf's measuring functions assume WGS84, and our geometry is in RD metres, so area, centroid and orientation are planar math in `shared/geo`.
+  - `polygon-clipping` preferred over `clipper-lib` (float coords, pure JS; per-edge setbacks via half-plane intersection). Final decision at M2.
+  - Screen 1 parcel confirmation uses an SVG plan instead of a map library (works offline, no tiles).
+  - No `dotenv`/`cross-env`: Node 24 `process.loadEnvFile()`.
+  - Server and proxy on `127.0.0.1` (macOS `localhost` → `::1` issue).
+  - Added `.gitignore` (not in the P0 prompt) so `.env` stays out of git; `data/cache/` is not ignored.
+  - Extra env vars `SERVER_PORT`, `SITE_ID`, `CACHE_MODE` (`readwrite` | `offline`) in `.env.example`; P1/P3 must implement them.
+- **Open issues:**
+  - Not a git repo yet: run `git init` in P1 before the first commit.
+  - Move `ref-01/02/03*.png` from the repo root to `docs/references/` in P1.
+  - Mac risk: a lockfile written on Windows may leave out macOS optional binaries (`@esbuild/darwin-arm64`, `@rollup/rollup-darwin-arm64`). Test clone + `npm install` + `npm run dev` on the Mac at the end of M1.
+- **Next:** P1 — Scaffold (M0)
+
+### 2026-10-06 · P1 — Scaffold (M0)
+- **Built:**
+  - `git init`; reference PNGs moved to `docs/references/`.
+  - npm workspaces `shared`, `server`, `client` per the P0 layout. Root scripts: `dev`, `test`, `typecheck`, `build`, `clean`.
+  - `shared`: zod schemas for Provenance, `constrained(T)`, SiteConstraints, Envelope, MassingParams, MassingResult, Volume, plus site DTOs (Ring, Parcel, ContextBuilding, SiteScene). Provider interfaces (Geocoder, ParcelProvider, ContextProvider, ZoningProvider, CodeRules). Planar geometry (area, centroid, toLocal), RD New proj4 definition, hard-coded sample scene (5-vertex parcel, 15 boxes, local metres).
+  - `server`: Hono app (`/api/health`, `/api/scene` serving the sample scene), bound to 127.0.0.1, loads `.env` via `process.loadEnvFile`.
+  - `client`: Vite + React + R3F viewer. Orthographic axonometric camera, OrbitControls (orbit/pan/zoom only), flat parcel, extruded context boxes. Vite proxies `/api` to the server. Scene is fetched from the server and parsed with the shared zod schema.
+  - 12 vitest tests pass (geometry, CRS, schemas, server routes). Typecheck and production build pass. Dev run checked in the browser: parcel and boxes render, no console errors.
+- **Resolved versions:** typescript 6.0.3, vitest 5.0.3, vite 8.3.3, react 19.3.0, three 0.186.1, @react-three/fiber 9.8.1, drei 10.7.9, postprocessing (R3F) 3.1.3, postprocessing 6.39.5, zustand 5.0.15, suncalc 2.1.1, hono 4.13.13, @hono/node-server 2.1.3, tsx 4.23.15, zod 4.6.5, proj4 2.22.0, @turf/boolean-point-in-polygon 7.4.0, @types/node 24.19.1, concurrently 10.0.5, rimraf 6.1.3.
+- **Decisions:**
+  - `npm install` resolved `typescript@latest` to 7.0.2 (native compiler) and `@types/node` 26. Pinned to `typescript@~6` (JS compiler) and `@types/node@24`, as P0 intended.
+  - N8AO arrives through `@react-three/postprocessing` (`node_modules/n8ao` present), so no extra package.
+  - `ParcelProvider`/`ContextProvider` return `Parcel`/`ContextBuilding` with rings in RD metres. The caller shifts them to the local frame with `toLocal`.
+  - Plan point (x, y) maps to three.js (x, height, -y).
+  - Server tests live in `server/src`; vitest projects are the `shared` and `server` directories. Client tests are not set up yet.
+- **Deviations from SPEC.md:**
+  - Vite resolved to 8.x (rolldown-based) instead of the esbuild/rollup pair named in P0. Still prebuilt binaries, no compilation. The `win32-x64` binaries are installed; the Mac needs its own (see open issues).
+  - Context boxes use a plain `meshStandardMaterial` for now. The white-model look is P2.
+- **Open issues:**
+  - npm warns that `esbuild@0.28.2` has an install script it did not run (npm 11.16 allow-scripts). Nothing needed it: dev, tests and build all work. Revisit if esbuild misbehaves on the Mac.
+  - Build warns about a 1.37 MB chunk (three + drei). Fine for a local demo, no splitting planned.
+  - Mac check (fresh clone, `npm install`, `npm run dev`) still pending, planned for the end of M1. No remote or commit made for it yet.
+  - Client has no unit tests yet.
+- **Next:** P2 — White-model look (M0), Opus 5.5, new session, plan mode.
+
+### 2026-10-06 · P2 — White-model look (M0)
+- **Built:**
+  - `client/src/viewer/renderStyle.ts`: one `RenderStyle` config (background/ground, parcel, context, proposal + outline, light, AO, camera) and `defaultRenderStyle`. M5 binds a settings panel to this shape.
+  - Viewer split into `Viewer` (Canvas `flat` + `shadows="percentage"`, ortho camera from elevation/azimuth, orbit limited to above the horizon), `Sun` (suncalc for `scene.origin`, directional light with shadow frustum fitted to scene radius + shadow length, hemisphere + ambient fill), `Ground` (unlit plane in the background colour + shadow-only layer, so there is never a horizon or edge; parcel tint), `ContextModel` (matte Lambert, no edges), `ProposalVolume` (saturated Lambert + drei `Edges` 2 px black: outline on the proposal only), `Effects` (EffectComposer + N8AO), `geometry.ts` (shape/extrude/bounds helpers).
+  - `shared/src/geo/sun.ts`: `sunVector(azimuthDeg, altitudeDeg)` → [east, north, up], with 6 tests.
+  - `SiteSceneSchema` gained `origin: {lat, lon}` (WGS84 of the local origin, drives suncalc) and optional `proposal: Volume[]`. Sample scene: Delft stand-in origin (52.0116, 4.3571) and a 2-volume L test mass (12 m bar + 18 m head) inside the parcel.
+  - `.claude/launch.json` (`massing-dev` = `npm run dev`, port 5173) for the browser preview.
+  - 18 tests pass, typecheck and build pass. 60 fps at ~970×910 in the dev preview.
+- **Final renderStyle defaults:** background `#e6e6e3`, context `#f7f7f5`, proposal `#c23350`, outline `#111111` 2 px. Sun 2026-09-21 09:30+02:00 (Delft: alt ≈ 18°, az ≈ 113°, so long shadows fall west/left of the default view), sun 2.2, sky 2.1 (`#ffffff` / bounce `#bdbdb9`), ambient 0.15, PCF radius 6, map 4096, shadow opacity 0.4. AO radius 5 m, falloff 1, intensity 6, quality high. Camera elevation 42°, azimuth 210° (from SSW), zoom 7.
+- **Measured vs references** (sRGB pixel reads from the canvas vs neutral-grey histograms of the refs): ground 230 (ref-02 ≈ 230), roofs 239 (≈ 232–236), lit walls 225 (≈ 220), shaded walls 187 (≈ 190–198), ground shadow 183 (≈ 185–195). Proposal lit face 171/44/69 vs ref-01 mid red 170/56/79.
+- **Decisions:**
+  - suncalc resolved to **2.x**, whose API differs from the 1.x that `@types/suncalc` describes: degrees, azimuth clockwise from north. `sunVector` uses the 2.x convention, and `@types/suncalc` was removed (suncalc 2 ships its own types).
+  - `flat` (NoToneMapping) so white stays white; `shadows="percentage"` because three r186 removed PCFSoftShadowMap (soft edges come from `shadow.radius`).
+  - The EffectComposer stays mounted even with AO off (N8AO `enabled` prop). Rendering without it blends the shadow layer in sRGB and makes ground shadows much darker (183 → ~150), so the AO toggle would otherwise change the shadows too.
+  - Shadow darkness comes from a `shadowMaterial` layer over an unlit ground, so the ground colour exactly equals the background.
+  - Default sun is morning, so shadows fall to the left as in ref-02. M5 exposes date/time.
+- **Deviations from SPEC.md:**
+  - Context buildings have no edge lines. ref-01/02 show thin grey edges on context, but SPEC §10 says the outline is on the proposal only. The spec wins. Could become an optional `contextEdges` style in M5.
+  - `SiteScene` now carries the proposal volumes for M0. P5/P6 will move the proposal to massing state (generateMassing output) and probably drop it from the scene payload.
+- **Open issues / remaining differences vs references:**
+  - Not in P2 scope: asphalt roads with dashed centrelines, street labels, leader-line/tag annotations, scale figures, trees, hatched context, the paper/noise texture of ref-02 (P9/P11).
+  - The sample context is sparse boxes; refs are dense blocks, so the 1 m gaps between terrace boxes read as dark slits. Real 3DBAG context (P3) will look denser.
+  - `scene.origin` is a Delft stand-in. P3 must fill it from the parcel centroid (RD → WGS84 via proj4).
+  - The console shows a `THREE.Clock` deprecation warning from R3F internals. Harmless.
+  - Build chunk is now 1.6 MB (postprocessing + n8ao). Still fine for a local demo.
+  - Mac check (fresh clone, `npm install`, `npm run dev`) still pending from P1.
+  - The browser preview pane pauses rendering when hidden. Keep it visible when taking screenshots.
+  - No commits per milestone: the user will commit everything at the end (git identity still unset on this PC).
+- **Next:** P3 — Live site data (M1), Sonnet 5.5, new session, plan mode. Run the SPEC §14 P3 prompt plus these carry-overs: fill `scene.origin` from the real parcel centroid (RD → WGS84); implement `SERVER_PORT`, `SITE_ID`, `CACHE_MODE` from `.env.example`; keep or drop the proposal test mass depending on fit; preview via `.claude/launch.json` with the pane visible; do not commit (the user commits at the end).
+
+### 2026-10-06 · P3 — Live site data (M1)
+- **Built:**
+  - Server: `config.ts` (`SERVER_PORT`, `SITE_ID`, `SITE_ADDRESS`, `CACHE_MODE`), `cache/diskCache.ts` (raw JSON per URL under `data/cache/<dir>/<provider>-<sha1[:12]>.json`; `offline` + miss → `CacheMissError` → HTTP 503), `providers/nl/{locatieserver,kadasterParcel,bag3d}.ts` behind the shared `Geocoder` / `ParcelProvider` / `ContextProvider` interfaces, `scene.ts` (`buildScene`: address → parcel → origin = parcel centroid → `rdToWgs84` for `scene.origin` → `toLocal` for everything), `createApp(deps)` in `app.ts`. Routes: `GET /api/scene?q=<address>` (default `SITE_ADDRESS`), `GET /api/scene/sample` (old hard-coded scene).
+  - Shared: `pointInRing` (planar), `SceneMetaSchema` + optional `meta` on `SiteScene` (address, sources, context count, skipped count).
+  - Client: address input + Load, error display, facts panel (parcel id, area, "indicative boundary", context count, sources).
+  - Tests: 38 pass (was 18). Recorded real fixtures in `server/src/providers/nl/__fixtures__/`. Typecheck and build pass.
+  - Demo cache seeded: `data/cache/placeholder/` (18 files, 4.1 MB). Verified in `CACHE_MODE=offline` on a second server instance: seeded address → 200, unseeded address → 503 with a readable message. Browser: 773 context buildings, 61 fps, no console errors. Second address (Oude Delft 100) works and lands in `data/cache/_adhoc/` (git-ignored).
+- **Endpoints verified against the live APIs (not guessed):**
+  - Locatieserver `search/v3_1/free?q&rows=1&fq=type:adres&fl=weergavenaam,centroide_rd,nummeraanduiding_id`; `centroide_rd` is WKT in RD.
+  - Kadastrale kaart `collections/perceel/items?f=json&bbox&bbox-crs=…/28992&crs=…/28992`. **`crs=` is required for RD output**; the default is CRS84. Geometry is `MultiPolygon`; `kadastrale_grootte_waarde` is the registered area.
+  - 3DBAG `collections/pand/items?bbox=<RD>&limit=100`, pagination via the `next` link. `metadata.transform` (scale/translate) decodes the integer vertices. Footprint = `lod "0"` outer ring.
+- **Decisions:**
+  - Stand-in site: parcel **DEL00 K 2410** is the plot at **Hendrik Casimirstraat 8, 2628KJ Delft** (point-in-polygon confirmed; no. 6 is K 2409). Default `SITE_ADDRESS` is that address.
+  - Context height = `b3_h_dak_70p − b3_h_maaiveld` (LoD1.2 roof height above ground). Checked on a fixture: 7.78 m vs 7.80 m from the LoD1.2 vertices. Buildings with no height, `eindgeldigheid` set, or status demolished / not built / permit-only are skipped and counted (`meta.skippedContext`).
+  - Only the demo address writes to `data/cache/<SITE_ID>/`; every other address goes to `_adhoc`, so the committed cache stays clean.
+  - Point-in-polygon is a planar ray-cast in `shared/geo` rather than `@turf/boolean-point-in-polygon` (CLAUDE.md: planar math in shared/geo).
+  - The proposal test mass is dropped from the live scene (111 m² parcel). `proposal` stays optional in the schema.
+  - `app.ts` no longer exports a ready-made `app`: `index.ts` loads `.env` and then calls `createApp(loadConfig())`, so config is never read before `.env`.
+  - No context merging in `ContextModel`: ~870 meshes still run at 61 fps.
+- **Deviations from SPEC.md:** none.
+- **Open issues:**
+  - The stand-in parcel is only **111 m²** (a terraced-house plot). It will constrain M3 massing; the real site swap-in is P12.
+  - Locatieserver is fuzzy: a nonsense address still returns the nearest fuzzy match (a gibberish query returned a parcel in Zeist). The label of the match is shown in the input after loading, but there is no "did you mean" check.
+  - The parcel tint is hidden under the terrace, so the parcel is hard to see in the default view. The envelope ghost (P4) should fix this.
+  - The own building on the parcel is kept as context.
+  - Holes in footprints (inner rings) are ignored.
+  - Another dev server (from another chat) was holding ports 5173/8787 during this session. It picked up the changes through watch/HMR, so verification used it.
+  - Mac check (fresh clone, `npm install`, `npm run dev`) still pending. The user commits everything at the end.
+- **Next:** P4 — Constraints + envelope (M2), Opus 5.5, new session, plan mode.
+
+### 2026-10-06 · P4 — Constraints + envelope (M2)
+- **Built:**
+  - Shared: `SiteFixtureSchema` (`schemas/siteFixture.ts`); `constraints/` (field registry `CONSTRAINT_FIELDS` with labels, Dutch terms, units and `getField`/`setField`/`formatValue`; `applyOverrides`, `unknownConstraints`, `assumedFields`, `isPlaceholder`; `constraintsToLocal`); `envelope/` (`edgeRoles`, `insetPerEdge`, `resolveEnvelope`); planar helpers `openRing`, `closeRing`, `toCcw`, `cleanRing`, `polygonWithHolesArea`, `distanceToSegment`. New dependency `polygon-clipping` 0.15.7 (pure JS).
+  - Data: `data/sites/placeholder.json` (K 2410, everything `assumed`: Wonen, 15 m, setbacks street 2 / side 0 / rear 5 m, street side 65°, coverage 0.6; gutter height, FAR, parking, bouwvlak, building line `null`), `_template.json`, `README.md` (every field, units, statuses, Dutch terms).
+  - Server: `FixtureZoningProvider` (`server/src/providers/fixtureZoning.ts`) reads `data/sites/<SITE_ID>.json`. `buildScene` attaches `scene.zoning = { fixtureId, constraints }` in the local frame, or all-unknown constraints when no fixture matches the parcel. `config.sitesRoot`.
+  - Client: zustand `state/siteStore.ts` (scene, overrides, `useConstraints`, `useEnvelope`, `usePlaceholder` for the P9 watermark); `screens/SiteScreen.tsx` (old address form + facts), `screens/ConstraintsScreen.tsx` (table: rule + Dutch term, value, source/quote, status badge, override Set / Unknown / Reset; notes; envelope summary; "Show envelope"); tab bar Site | Constraints with a PLACEHOLDER DATA badge; `viewer/EnvelopeGhost.tsx` (faint fill + dashed edges, no depth write, no shadows; unknown height → ground outline drawn through buildings); `renderStyle.envelope`.
+  - Tests: 67 pass (was 38): all three envelope paths, clipped bouwvlak, bouwvlak outside the parcel, empty and multi-part results, L-shape concave corner, the real K 2410 ring (distance from every edge checked), edge roles, overrides, placeholder flag, fixture files, scene zoning. Typecheck and build pass.
+  - Browser check (port 5174): stand-in envelope = setbacks path, 71 m² × 15 m. Rear 9 m → 44 m² instantly, badge `user override`. Height Unknown → ground outline + note. Street 30 m → "no buildable area". Reset → 71 m². Oude Delft 100 → every rule unknown, parcel path, placeholder on. 60 fps, no console errors.
+- **Decisions:**
+  - Setbacks need edge roles. New optional constraint `streetSide` (bearing from the parcel towards the street, °). An edge is street/rear when its outward normal is within 45° of that bearing (or its opposite) **and** it lies in the front/back quarter of the plot depth **and** its outward ray does not re-enter the parcel. The last two rules were needed for K 2410, whose south side has a 1 m jog and a small bump that face front/back.
+  - Setback cut = everything within `d` of the edge segment (band + circumscribed disks at both ends), i.e. the literal "distance to the boundary ≥ d". A first version with bands only left a detached sliver beside the bump.
+  - The setbacks path runs only when all three setbacks are known (and the street side, unless all three are equal). Otherwise the parcel path is used and a note says what is unknown.
+  - Placeholder = any constraint (or note) with status `assumed`, null or not, or an `assumed` envelope. Real fixtures should mark "plan has no such rule" as `null` + `verified`.
+  - Overrides live in client state only (not persisted, not written to the fixture), reset when another parcel loads. The envelope is recomputed client-side with the shared function.
+  - Override provenance puts the previous value in `source` ("User override (was 5 m, assumed)"), not in `quote`, which stays reserved for plan text.
+  - Vite port can be set with `PORT`, and `.claude/launch.json` has `massing-dev-alt` (client 5174, server 8788), because another chat's dev server held 5173/8787.
+- **Deviations from SPEC.md:**
+  - `Envelope.maxHeight` is `number | null` (spec: `number`): unknown height must not become a default. **P5 must handle null** (no floor clamp, height compliance `unknown`).
+  - `Envelope.notes: string[]` added (clip, fallback and unknown-input explanations).
+  - `SiteConstraints.streetSide` added (optional, provenance like every other rule).
+  - `ZoningProvider.constraintsFor(parcel)` returns `{ fixtureId, constraints } | null` (P1 had `constraintsFor(siteId)`).
+  - `SiteScene.zoning` added; constraints travel with the scene, shifted to the local frame by the server.
+- **Open issues:**
+  - The plot's own house is context and sits inside the envelope ghost. Hiding the context building on the parcel is a P5/P6 question (the proposal replaces it).
+  - Editing a shared module while `npm run dev` runs re-creates the zustand store via HMR and leaves the viewer empty until a page reload. Dev-only.
+  - At ~800 px wide the Constraints panel covers most of the viewer. Fine on a laptop screen; no responsive layout yet.
+  - Geometry rows (bouwvlak, building line) can only be overridden to unknown, not drawn.
+  - `streetSide` 65° is a guess from the address point and open space; check it on a map when the real site is chosen (P12).
+  - Mac check (fresh clone, `npm install`, `npm run dev`) still pending. The user commits everything at the end.
+- **Next:** P5 — Massing generator core (M3), Opus 5.5, new session, plan mode. Carry-overs: `generateMassing` takes the `Envelope` as is (`maxHeight` may be null, `footprint.coordinates` may be `[]`); use `useConstraints()`/`useEnvelope()` from `client/src/state/siteStore.ts` when P6 wires it to the UI.
+
+### 2026-10-06 · P5 — Massing generator core (M3)
+- **Built:**
+  - `shared/src/massing/`: `generateMassing` (orchestrator), `frame.ts` (building axis + rotation), `fit.ts` (clip helpers, bisection `solveExtent`), `templates/` (`slab`, `lBlock`, `courtyard`, registry `TEMPLATES` + `TYPOLOGY_LABELS`), `metrics.ts` (`computeMetrics`, `facadeSunScore`, `sunWeight`), `compliance.ts` (`checkCompliance`), `format.ts`. Exported from `@massing/shared`.
+  - Planar helpers: `rotate`, `toGeoPolygon` (moved out of `resolveEnvelope.ts`), `distanceOutside`.
+  - Tests: 143 pass (was 67): known-rectangle metrics, every clamp type, pitched roof, null/absent rules, empty envelope, L and courtyard shapes, slab fallback on K 2410, inside-envelope sweep (5 envelopes × 3 typologies × 2 alignments × 3 coverage targets), purity/determinism, benchmark. Typecheck and build pass.
+  - Benchmark: **1.0–1.7 ms** per call (mean of 20, pitched roof) on K 2410 and a 40-vertex envelope, all typologies and alignments. Budget 50 ms.
+- **Template fitting:** rotate the envelope into a building frame (u = axis, +v = front). Templates are rectangles in that frame, scaled by one extent `s ∈ [0,1]`, clipped to the envelope with polygon-clipping (this is what keeps every typology inside an irregular envelope). The variant with the most area at s = 1 wins; bisection then finds the largest s whose footprint stays ≤ the coverage target (invariant area(lo) ≤ target, so the result never exceeds target or max coverage). Axis: street alignment follows the longest envelope edge `edgeRoles` marks as street; unknown street side → long axis of the minimum-area bounding rectangle (assumption); sun alignment → east–west, front north.
+  - slab: band of depth d along u, five positions front → back, grown from its centre.
+  - l_block: front wing + side wing of width d at either end, both arms grow from the corner.
+  - courtyard: envelope ∩ centre-scaled box, minus a court inset by d; solid when no `MIN_COURT` court fits; falls back to slab when even `MIN_DEPTH` wings leave no court.
+  - tower_podium / stepped: no template yet → slab + clamp. New typology = one file + one registry line.
+- **Decisions:**
+  - Constants: `MIN_DEPTH` 5 m, `MIN_COURT` 8 m, `ROOF_PITCH` 40° (listed in `assumptions` when used). Clip slivers < 1 m² dropped. Coverage shortfall clamp above 2 percentage points.
+  - Clamp order: typology fallback → depth (≤ envelope across the axis) → coverage (≤ max coverage) → template prepare (courtyard depth / fallback, L reads as slab) → shortfall → floors by max height (incl. ridge), max gutter height (wall top), max FAR. Each clamp names asked and allowed values plus the rule status.
+  - Pitched roof: `Volume.roof = { pitchDeg, ridgeAngle, ridgeHeight }`, ridge along the building axis, ridge = min(depth, part width)/2 × tan 40°. Counts in height and max height; gutter rule uses the wall top; attic not in GFA.
+  - **facadeSunScore:** on a closed footprint Σ length × outward normal = 0, so a weight linear in cos(angle from south) (the obvious "S 1, E/W 0.5, N 0") gives every footprint the same score (found by a failing test). Weight is now `((1 + cos Δ)/2)²` (S 1, SE/SW 0.73, E/W 0.25, N 0) and the area-weighted mean (always 0.25–0.5 on a closed footprint) is rescaled to 0–1: 1 = long facades face south/north, 0 = east/west. S vs N can only matter once party walls are excluded (v2).
+  - Compliance rows: allowed functions, max height, max gutter height, max coverage, max FAR, parking (always `unknown`, shows demand = units × norm), inside envelope. Null or absent rule → `unknown`. Labels come from `CONSTRAINT_FIELDS`.
+  - "Inside envelope" is a distance check (vertices + edge midpoints vs envelope, 1 mm), not a boolean difference: polygon-clipping threw "Unable to complete output ring" on the coincident edges left by clipping. Shapes that throw during fitting count as "does not fit", so a slider can never crash the app.
+  - `estUnits` rounds down.
+- **Deviations from SPEC.md:**
+  - Signature is `generateMassing(envelope, rules, params, site: { parcelArea, programme })`. Coverage, FAR and units need the parcel area, net-to-gross and unit size.
+  - `MassingResult.assumptions: string[]` added (P6 right panel). `Volume` gained optional `floors` and `roof`. New `ProgrammeSchema { targetUnits, avgUnitSize, netToGross }` + `DEFAULT_PROGRAMME` (12 units, 65 m², 0.75: assumptions for P6/P7 to show as editable), `TypologySchema`, `ComplianceSchema`.
+  - facadeSunScore weighting as above (spec ordering kept, values rescaled).
+- **Open issues:**
+  - `ProposalVolume` draws outer rings only: courtyard holes and gables are not rendered yet (P6).
+  - Courtyard wings follow the frame box, not slanted envelope edges, so on irregular envelopes the court can open into a C. L-block on a very irregular envelope can end up multi-part (each part is a volume).
+  - On K 2410 the street frontage is ~7 m, so street-aligned slabs run front-to-back like a terraced house; L reads as a slab at depth ≥ ~11 m, courtyard always falls back. Expected for a 111 m² plot.
+  - Shared tests that need Node globals reference `node` types per file (TS 6 defaults `types` to `[]`).
+  - Mac check still pending. The user commits everything at the end.
+- **Next:** P6 — Inputs + metrics UI (M3), Sonnet 5.5, continue this session, no plan mode. Carry-overs: call `generateMassing(envelope, constraints, params, { parcelArea: scene.parcel.areaM2, programme })` from `useEnvelope()`/`useConstraints()`; render holes and `roof` in `ProposalVolume`; hide the context building on the parcel when a proposal is shown; show `clamps` and `assumptions` panels; programme inputs bind to `ProgrammeSchema` starting from `DEFAULT_PROGRAMME`.
+
+### 2026-10-06 · P6 — Inputs + metrics UI (M3)
+- **Built:**
+  - `client/src/state/massingStore.ts`: zustand store with `programme` (starts from `DEFAULT_PROGRAMME`), three options A/B/C each holding its own `MassingParams` (A slab, B L-block east–west, C courtyard), `active`, setters, `resetOption`. `useMassing(id)` runs `generateMassing(envelope, constraints, params, { parcelArea: scene.parcel.areaM2, programme })` in a `useMemo` over `useEnvelope()`/`useConstraints()`, so sliders and constraint overrides regenerate live with no server or LLM call.
+  - `client/src/screens/DirectionsScreen.tsx`: option tabs, left inputs (programme sliders; typology select with the two unbuilt ones disabled; floors, depth, coverage, ground/floor height, alignment, roof, colour; reset), right panel (metrics, compliance with pass/fail/unknown badges, clamps, assumptions incl. envelope notes, "indicative" footer). New "Directions" tab in `App.tsx`.
+  - Viewer: `proposal` prop replaces `scene.proposal`; the plot's own house (context building whose vertex average lies in the parcel) is hidden while a proposal shows. `ProposalVolume` renders courtyard holes and gable roofs (`roofGeometry` in `viewer/geometry.ts`: triangulated footprint split along the ridge, each vertex lifted by its distance from the ridge). Proposal colour comes from the active option.
+  - Browser check (port 5174): option A slab on K 2410, pitched roof and floors slider update metrics and compliance live (10.7 m ≤ 15 m, 55 m² footprint), option C shows its colour plus the courtyard→slab and coverage clamps, no console errors. 143 tests, typecheck, build pass.
+- **Decisions:**
+  - Option tabs sit in the left column (they collided with the right panel at ~900 px width when centred).
+  - Programme is shared by all options; massing params are per option. State is not persisted.
+  - Coverage and FAR use the Kadaster registered parcel area (`scene.parcel.areaM2`, 111 m²), not the polygon area.
+- **Deviations from SPEC.md:** none.
+- **Open issues:**
+  - No client unit tests (client has no vitest project); the roof geometry and the store are checked in the browser only.
+  - Pitched roof on a courtyard uses one ridge over the whole outer width (shallower than 40°); rendering across a court hole was not inspected.
+  - Panels are fixed-width overlays; the viewer is not re-centred, so at narrow widths they cover most of the plot.
+  - The browser pane's emulated viewport did not resize the canvas; checked at the pane's own size.
+  - Mac check still pending. The user commits everything at the end.
+- **Next:** P7 — AI layer, server (M4), Opus 5.5, new session, plan mode. `initialOptions()` in `massingStore.ts` is where P8 will put the strategy generator's A/B/C params.
+
+### 2026-10-06 · P7 — AI layer, server (M4)
+- **Built:**
+  - Shared: `schemas/ai.ts` (`PrioritiesSchema` + `DEFAULT_PRIORITIES`, `AiErrorSchema`, `AiMetaSchema`, `aiResponse()`, request/result DTOs for the four endpoints, `EXTRACTABLE_PATHS`, `OPTION_IDS`/`OPTION_COLOURS`); `ai/` (`PARAM_RANGES`/`PROGRAMME_RANGES`, `clampToRanges`, `fitProgramme`, `digitErrors`/`hasDigits`, `isVerbatim`, `quoteStatesValue`, `contrastIssues`, `realisedIssues`); `massing/envelopeFacts.ts` (envelope area, frame length × depth per alignment, floors under max height, max footprint by coverage, programme GFA); format helpers now exported.
+  - Server: `ai/llm/` (`LlmClient` seam, `AgentSdkClient` + `agentSdkWorker.mjs`, `FakeLlmClient`), `ai/callStructured.ts` (JSON Schema from zod → model → zod + semantic checks → one retry with the errors → typed `AiError`), `ai/prompts.ts` (versioned prompt files with `{{placeholders}}`; missing or unused values throw), `ai/context.ts` (code-made summaries of rules, facts, programme, priorities, ranges), the four calls `constraintInterpreter`, `briefInterpreter`, `strategyGenerator`, `reportWriter` (stub), `ai/aiCache.ts`, `routes/ai.ts` (`GET /api/ai/status`, `POST /api/ai/{interpret-brief,generate-directions,extract-rules,report}`), prompts `server/src/prompts/*.v1.md`, `scripts/record-ai.ts` (`npm run record:ai -w server`).
+  - Client: sliders read `PARAM_RANGES`/`PROGRAMME_RANGES`; `massingStore` uses the shared `OPTION_IDS`/`OPTION_COLOURS` (no behaviour change).
+  - Tests: 192 pass (was 143). Real answers recorded in `server/src/ai/__fixtures__/` and replayed by `FakeLlmClient`, plus hand-edited bad variants: fabricated quote, number not in its quote, digits in prose, near-identical options, out-of-range depth, options that clamp to the same building, unknown report token. Route tests use a temp cache dir. Typecheck and build pass.
+  - Live check through the dev preview (`massing-dev-alt`) on stand-in site K 2410:
+    - brief → programme + priorities in 4.7 s
+    - directions → 3 options (L-block street / slab sun / courtyard → slab) with generator clamps in 6.5 s
+    - rule extraction from a sample Dutch excerpt in 4.5 s → height, gutter height, coverage (50% → 0.5) and function, plus a note on the roof-pitch rule, each with a verbatim quote
+    - `CACHE_MODE=offline` replays the cached answer (9 ms); a miss returns 503.
+- **Decisions:**
+  - **Auth: the user's own Claude login via the Claude Agent SDK** (user decision), not `@anthropic-ai/sdk` + an API key.
+    - The bundled Claude Code binary reads `~/.claude/.credentials.json`. `ANTHROPIC_API_KEY` in `.env` takes precedence if set. Empty values are stripped, because an empty key would shadow the login.
+    - Personal use only: Anthropic does not allow claude.ai login inside products offered to others. Swapping to the API SDK = one new `LlmClient`.
+  - **Each call runs in a child process** (`agentSdkWorker.mjs`, plain JS run with `node`).
+    - Importing the SDK inside the server process hung forever under `concurrently` + `tsx watch`, i.e. `npm run dev`, both in the preview pane and in a clean-env terminal.
+    - `tsx`, `tsx watch`, `npm run dev -w` and `concurrently` + `tsx` each worked alone. Root cause not found.
+    - The worker is unaffected and also keeps the SDK out of server start-up. About 100 ms overhead per call.
+  - The worker isolates the model:
+    - custom system prompt, `tools: []`
+    - `mcpServers: {}` + `strictMcpConfig` + `disableClaudeAiConnectors`; without these the user's claude.ai connectors were loaded
+    - `settingSources: []` (no CLAUDE.md), `persistSession: false`, empty temp cwd
+    - `maxTurns` 4, because structured output takes a tool round trip
+    - effort: brief low, others medium
+    - model from `LLM_MODEL` (default `claude-sonnet-5-5`); `meta.model` prefers the requested model, because the SDK's usage map also lists an internal Haiku helper.
+  - Numbers come from code, enforced by checks:
+    - Model prose (option names, intents, trade-offs, brief summary, notes) may not contain digits.
+    - Extracted values must appear in their verbatim quote (percentages as value × 100).
+    - Brief programme values must cite a verbatim brief quote.
+    - The report writer writes `{{tokens}}` that code fills from computed metrics; digits outside tokens are rejected.
+    - Every number in a prompt is injected from `envelopeFacts`, constraints or the programme.
+  - Contrast checks:
+    - Near-identical params (same typology + alignment, Δfloors ≤ 1, Δcoverage ≤ 0.1, Δdepth ≤ 2 m) → retry, then error.
+    - Near-equal massings after clamping (footprint and GFA within 5 %, height within 1 m) → retry with the computed numbers, then returned with `warnings`, because a small plot can force it.
+  - Strategy options:
+    - Code assigns the colours (A/B/C palette).
+    - Code clamps params to the slider ranges ("AI asked for depth 45 m; the input range allows 40 m.") before `generateMassing`. Clamps = range clamps + generator clamps.
+    - `generate-directions` takes the constraints *with overrides* plus the parcel ring and area from the client, so the server stays stateless.
+  - `extract-rules` returns proposals only (status `extracted`) and never writes the fixture. It reads the body's excerpts, else the active fixture's (placeholder has none → 422). Geometry and street side are never asked for.
+  - AI answer cache `data/cache/<SITE_ID>/ai-<call>-<sha1>.json`; key = model + prompt version + request. Readwrite always calls the model and stores; offline only replays. The test answers were deleted from `data/cache/placeholder/`.
+  - No prompt caching: the prompts are short and the SDK manages its own.
+  - Costs are SDK estimates, billed against the plan, not an API account. Recording reported $0.16–0.30 per call in this Claude session's environment, but $0.01–0.02 per call from the dev server.
+- **Deviations from SPEC.md:**
+  - Agent SDK + Claude login instead of `@anthropic-ai/sdk` + `ANTHROPIC_API_KEY` (user decision, see above). New dependency `@anthropic-ai/claude-agent-sdk`, which ships a prebuilt per-platform Claude binary through optionalDependencies, like esbuild; `darwin-arm64` is in the lockfile. `zod` is now also listed in the server's dependencies.
+  - Prompts live in `server/src/prompts/` (P0 layout), not `server/prompts/`.
+  - New `Priorities` schema (5 weights, 0–5) and `typologyHints`; option colours are set by code, not by the model.
+  - Jury reviewer not built (optional; a P11 item).
+- **Open issues:**
+  - The SDK-import hang under `concurrently` + `tsx watch` is worked around, not understood.
+  - On the 111 m² stand-in plot every option is small (estUnits 0–4) and courtyards always fall back to slabs. The prompts handle it, but contrast stays limited until P12.
+  - Demo day (SPEC §15): the Mac must be logged in to Claude Code (`~/.claude/.credentials.json`) or have `ANTHROPIC_API_KEY` set. Run the AI steps once online before going offline, so the cache has them.
+  - `record:ai` re-records all four fixtures and so changes the replay tests' expectations. Rerun `npm test` afterwards.
+  - Mac check still pending. The user commits everything at the end.
+- **Next:** P8 — AI layer, UI (M4), Sonnet 5.5, continue this session, no plan mode.
+  - Parse the endpoints with `aiResponse(...ResultSchema)` from `@massing/shared`.
+  - Brief box → `POST /api/ai/interpret-brief`: fills programme, priorities and hints; show `changes`, `unclear` and `clamps`.
+  - "Generate directions" → `POST /api/ai/generate-directions` with `useConstraints()` (overrides applied), `scene.parcel`, programme and priorities. Put `options[i].params` into `massingStore` A/B/C (`initialOptions()`); show name, intent, trade-offs, clamps and `warnings`.
+  - "Extract rules" on the Constraints screen → `POST /api/ai/extract-rules`; diff against the current values; apply as overrides with status `extracted`.
+  - Calls take 5–10 s: loading and error states, sliders stay live. Errors carry `kind` (503 unavailable/offline, 502 invalid output).
+
+### 2026-10-06 · P8 — AI layer, UI (M4)
+- **Built:**
+  - Shared: `applyExtracted` / `Extracted` / `NO_EXTRACTED` in `constraints/overrides.ts` (+2 tests).
+  - Client: `api/ai.ts` (typed calls parsed with `aiResponse(...)`; errors become one readable line, with the server's validation details), `state/aiStore.ts` (brief, priorities, typology hints, and one status per call: interpret, directions, rules; a late answer for a replaced site is dropped), `state/siteStore.ts` (new `extracted` layer under the overrides, `effectiveConstraints()`), `screens/controls.tsx` (Slider moved out of DirectionsScreen), `screens/AiPanels.tsx`.
+  - Directions screen: brief box + "Interpret brief" (fills programme, priorities, hints; shows summary, "Set from the brief" with quotes, "Unclear", clamps), priority sliders 0–5, "Generate directions" (fills options A/B/C), warnings, option tabs named after the directions, and a card per option (name, intent, trade-offs, clamps from generation, "Sliders changed since it was generated" notice).
+  - Constraints screen: "Extract from plan excerpts" shows a diff (current → proposed, verbatim quote, per-row checkbox, notes) before "Apply selected"; accepted values show a blue `extracted` badge with source and quote; "Discard N extracted" undoes them. Overrides stay on top of extracted values.
+  - Tests: 194 pass (was 192), typecheck and build pass.
+  - Browser check (port 5174, real Claude calls): brief → 10 units / 50 m², daylight 5, low profile 4; directions A/B/C with names and cards, live compliance and clamps update; extraction → 4 fields + 1 note, applied, and the live compliance then used the extracted gutter height ("max gutter height 10.5 m (extracted) allows 3"). Sliders stayed live during calls.
+- **Decisions:**
+  - Extracted rules are their own layer (`extracted`), not overrides, so they keep quote and status `extracted`. A user override on the same field wins and the diff says so. Both reset when another parcel loads.
+  - Option clamps shown in two places: live (generator, follows the sliders) and "When generated" (includes the range clamps, which the live view cannot see).
+  - Extraction always reads the site fixture's excerpts (the UI sends no text).
+- **Deviations from SPEC.md:** none.
+- **Open issues:**
+  - `data/sites/placeholder.json` has no `excerpts`, so "Extract rules" answers 422 ("No plan excerpts…") on the placeholder site. I tested with the fictitious sample text temporarily added, then removed it, so extracted values never make fictitious text look like real rules. Real excerpts arrive at P12. To demo it before then, paste the text from `server/src/ai/__fixtures__/samples.ts` into the fixture and delete it afterwards.
+  - The watermark is driven by `assumed` only, so once real rules are extracted the PLACEHOLDER badge can disappear even for unreviewed `extracted` values (existing rule: the badge goes when nothing is `assumed`).
+  - Edits to the stores during `npm run dev` crash the page until a reload (HMR), as before.
+  - Extracted values and AI results are not persisted: a page reload loses them (the server replays answers from its cache only offline).
+  - No client unit tests (no client vitest project); checked in the browser.
+  - Mac check still pending. The user commits everything at the end.
+- **Next:** P9 — Present + PNG export (M5), Opus 5.5, new session, plan mode. Before that, run the review prompt (R) for M4 per SPEC §14.
+
+### 2026-10-06 · P9 — Present + PNG export (M5)
+- **Built:**
+  - Present tab (`client/src/screens/PresentScreen.tsx`) with these controls:
+    - the option shown
+    - camera presets NE/SE/SW/NW axo, Top (north up), Eye level
+    - Save view / Restore saved view (one per parcel, kept in `localStorage`)
+    - Axonometric ↔ Perspective, keeping the framing
+    - sun date + local time (Europe/Amsterdam, DST-aware) and shadow softness
+    - AO toggle, outline weight, proposal colour (edits the active option's colour), context white/grey
+    - toggles for street labels, annotations and the envelope ghost
+    - aspect 4:5 / 1:1 / A3 landscape, resolution 1×/2×/4× with the pixel size shown, Export PNG with status
+  - `presentStore` holds the editable `RenderStyle`; every screen renders with it.
+  - `Viewer` was split into:
+    - `SceneContents`, shared by the on-screen viewer and the export
+    - `CameraRig`: ortho + perspective cameras, OrbitControls, and a `cameraHandle` used by presets, saved views and export
+    - `LabelOverlay`
+  - Pure, tested modules in `client/src/present/`:
+    - `frame.ts`: design frames, export size, fit
+    - `camera.ts`: View, presets, focus, `convertView`
+    - `labels.ts`: street name parse, street label placement, overlay model with every number formatted from computed metrics
+  - Canvas2D modules: `drawOverlay.ts` (leaders, tag boxes, street text, caption, watermark, collision avoidance), `viewer/ExportCanvas.tsx` (offscreen export).
+  - `shared/src/geo/time.ts`: `zonedIso` / `isoParts`.
+  - New dependency `@fontsource/ibm-plex-mono` 5.3.0 (font files only).
+  - `client` is now a vitest project.
+  - Tests: 219 pass (was 194). Typecheck and build pass.
+  - Browser check (`massing-dev-3`, port 5183):
+    - every preset, projection switch, save → reload → restore, sun time and grey context work
+    - 61 fps in Directions and in Present
+    - exports: 4:5 2× = 1920×2400 px (0.4 s, 3.5–4.6 MB); A3 4× = 5656×4000 px (3.5 s, 20.2 MB)
+    - the exported PNGs match the preview framing, labels and watermark
+- **Decisions:**
+  - **Design frame = WYSIWYG.**
+    - Each aspect has a fixed CSS size: 960×1200, 1080×1080, 1414×1000.
+    - In Present the same viewer element is laid out at that size and scaled with a CSS transform. Canvas `resize={{ offsetSize: true }}` measures the unscaled size.
+    - The on-screen dpr is set to about screen density × scale, so preview cost stays low.
+    - Export = the same CSS size at `dpr = multiplier`. Outline and label sizes (CSS px) therefore keep their relation to the frame at every resolution.
+  - **Offscreen export = a second, hidden R3F Canvas.**
+    - Settings: `frameloop="never"`, `dpr = m`, `preserveDrawingBuffer`.
+    - It has the same `SceneContents` and a fixed camera copied from the on-screen view.
+    - It renders twice via `advance()`, draws onto a 2D canvas plus the label layer, then `toBlob` → download. Unmounting frees the WebGL context.
+    - Reusing the component tree keeps lighting, N8AO and outlines identical without a second, hand-built pipeline.
+    - It waits with `setTimeout`, not `requestAnimationFrame`, so an export also works in a background tab.
+    - If the browser silently clamps the drawing buffer, the export stops with a readable error.
+  - **Labels = screen-projected anchors on a 2D canvas**, not drei `Text`.
+    - troika fetches its font from a CDN (breaks offline).
+    - In-scene text would get AO and shadows.
+    - One `drawOverlay` draws the on-screen layer (every frame, in `useFrame`) and the export composite (× multiplier).
+    - Each leader picks the most top/bottom/left anchor on screen, so it starts at a visible corner. It is lengthened until it clears earlier labels.
+    - Street names slide along the street to clear the proposal's screen bounds. There is no occlusion test otherwise; the references also draw labels over the model.
+  - Label content: proposal tag (option + AI name) + floors · height · GFA; parcel id · area, "indicative boundary"; envelope max height + source/status; street; caption with address + "Indicative early study · not a permit check". The model contributes only the option name.
+  - Watermark: diagonal "PLACEHOLDER DATA" + a corner tag "planning values assumed", in the preview and in every export, while `usePlaceholder()` is true.
+  - Eye level is always perspective, 1.6 m high, `parcelRadius + 26 m` out along the street bearing (south if unknown). Perspective allows looking up to 0.2 rad above the horizontal; ortho stays above the horizon.
+  - Presets fit a radius of max(40 m, 3 × parcel radius, 1.2 × proposal height).
+- **Deviations from SPEC.md:**
+  - The street label covers only the plot's own street, using the address name and the `streetSide` edge. There is no road data until P11. No label when the street side is unknown (the panel says so).
+  - Scale figures, trees and the hatched context are in the panel but disabled ("P11").
+  - The export is a second WebGL canvas at full resolution, not a hand-made `WebGLRenderer`. It is still offscreen and at target resolution, as §10 asks.
+  - `RenderStyle.context` is now `{ style: "white" | "grey" }` (colours in `CONTEXT_STYLES`). New `RenderStyle.labels`.
+- **Exported PNG vs references:**
+  - Matches: white matte context, soft long shadows, one saturated proposal with a crisp black outline, dashed envelope ghost, monospace leader labels with a black tag box, street name along the street (ref-02 style).
+  - Differs:
+    - no asphalt roads, dashed centrelines, trees, scale figures or hatching (P11)
+    - shadows are softer and blurrier than the refs' crisp edges: PCF radius 6 on a 4096 map over a ~1 km frustum. Tightening the shadow frustum to the frame would sharpen them.
+    - the 09:30 default sun leaves much of the ground in shadow from the SE/SW presets; 15–16 h reads closer to ref-01
+    - context has no edge lines (P2 decision)
+    - IBM Plex Mono is cleaner than ref-02's typewriter mono
+    - the stand-in plot is a 7 m terraced lot, so the proposal is small in the frame compared with the refs
+- **Open issues:**
+  - Saved views are per browser (`localStorage`), not in the project files.
+  - The browser pane's screenshots lag one action behind the page; take two when verifying.
+  - Editing store or camera modules during `npm run dev` resets the stores (HMR, as before); reload the page.
+  - Ports 5173/5174/5175–5177 were held by other processes, so `.claude/launch.json` gained `massing-dev-3` (client 5183, server 8797).
+  - Label collision avoidance is greedy (in label order); with many labels (P11 roads) it may need a proper placer.
+  - Mac check still pending. The user commits everything at the end.
+- **Next:** P10 — PDF report (M5), Sonnet 5.5, continue this session, no plan mode.
+  - Reuse the export path for renders: set a `presentStore.job` (view from `presetView` or `cameraHandle().capture()`), or factor out of `ExportCanvas` a promise API that returns the blob instead of downloading.
+  - The report writer is `POST /api/ai/report` (P7). Fill its tokens from `MassingResult.metrics`.
+  - Put the watermark on every page when `usePlaceholder()`.
+
+### 2026-10-06 · P10 — PDF report (M5)
+- **Built:**
+  - "Export PDF report" on the Present screen, with a "Write narrative with AI" toggle (enabled once directions exist). An A4 PDF is downloaded, in this order: cover, site, constraints, one page per option, comparison, assumptions, limitations.
+    - Cover: render, address, date, "indicative early study" disclaimer.
+    - Site: parcel id, area, street side with compass name, context count, data sources.
+    - Constraints: table of rule, value, status, source and quote, plus the envelope source and the unknowns.
+    - Option page: render, intent, metrics, compliance, clamps, trade-offs.
+    - Comparison table across options.
+  - `client/src/report/`:
+    - `model.ts`: `buildReportModel`, pure. Every number is formatted from computed metrics with the shared `fmtM`/`fmtM2`/`fmtRatio`.
+    - `pdf.ts`: `buildPdf` with pdf-lib, standard fonts, and a small layout engine (wrapped text, tables with a repeated header, page breaks). Characters the fonts cannot encode are mapped to ASCII or `?`.
+    - `generate.ts`: `generateReport` orchestrates renders, narrative, PDF and download.
+  - The render path now has a promise API: `presentStore.renderForReport(option, view, aspect, multiplier)` returns a JPEG blob from the hidden export canvas. `App` builds the overlay and volumes for the job's option, so each option renders with its own labels and colour. `computeMassing(id)` in `massingStore` is the non-hook twin of `useMassing`.
+  - `api/ai.ts` gained `writeReport`.
+  - New dependency `pdf-lib` 1.17.1 (pure JS, no native binaries).
+  - Tests: 227 pass (was 219): model values, unknown handling, comparison shape, PDF page count and title, unencodable characters. Typecheck and build pass.
+  - Browser check (port 5183):
+    - without narrative: 7 pages, 1.1 MB, 2.2 s
+    - with narrative on a live Claude call (after "Generate directions"): 11 pages, 13.7 s, narrative numbers filled in by code
+    - PDF pages inspected rendered with pdf.js: cover, constraints table, option page, comparison
+- **Decisions:**
+  - Renders are JPEG (0.9): the first PNG attempt would have made a ~15 MB PDF. Option renders are 1:1 at 1× (1080 px), the cover is 4:5 at 2×.
+  - Each option is shown from the SE axonometric preset fitted to its own massing, in the current Present render style (sun, AO, context colour).
+  - Narrative is optional. If it fails (offline, no login, no directions yet), the PDF is still produced and the panel says why. The narrative is the P7 report writer: tokens only, digits outside tokens rejected, so no number in the PDF comes from model text.
+  - The watermark is on every page (diagonal text + footer line) while `isPlaceholder`; the renders carry their own too.
+  - The report reads the current stores (overrides, extracted rules, sliders), not the cached AI-generated values, so it matches what the user sees.
+- **Deviations from SPEC.md:**
+  - §11 item 4 jury critique and item 6 finance block are not built (both optional, P11). Jury and finance are simply absent from the PDF.
+  - Standard PDF fonts (Helvetica, Courier): no extra font files, but only Latin-1 text.
+- **Open issues:**
+  - Option pages show "Option A" as the name until directions are generated.
+  - The watermark appears twice on pages with a render (page overlay + the image's own); both are intended, the page one is faint.
+  - The report waits for the viewer to be mounted; start it from the Present tab.
+  - Mac check still pending. The user commits everything at the end.
+- **Next:** P11 — Polish item (M6), Sonnet 5.5, new session, one item per run. Suggested first: roads + street labels (BGT or OSM), the biggest remaining gap to the references.

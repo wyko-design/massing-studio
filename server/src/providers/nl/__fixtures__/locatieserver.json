@@ -1,0 +1,13 @@
+{
+  "response":{
+    "numFound":301071,
+    "start":0,
+    "maxScore":18.365515,
+    "numFoundExact":true,
+    "docs":[{
+      "weergavenaam":"Hendrik Casimirstraat 8, 2628KJ Delft",
+      "nummeraanduiding_id":"0503200000026076",
+      "centroide_rd":"POINT(85632.029 446609.492)"
+    }]
+  }
+}
