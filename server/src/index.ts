@@ -11,8 +11,8 @@ try {
 const config = loadConfig();
 const app = createApp({ config });
 
-serve({ fetch: app.fetch, hostname: "127.0.0.1", port: config.port }, (info) => {
+serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
   console.log(
-    `server listening on http://127.0.0.1:${info.port} (site ${config.siteId}, cache ${config.cacheMode})`,
+    `server listening on http://${config.host}:${info.port} (site ${config.siteId}, cache ${config.cacheMode})`,
   );
 });

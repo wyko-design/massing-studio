@@ -15,6 +15,7 @@
     "test": "vitest run",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build -w @massing/client",
+    "start": "npm run start -w @massing/server",
     "clean": "rimraf client/dist coverage"
   },
   "devDependencies": {

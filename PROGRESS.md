@@ -414,3 +414,9 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
   - The report waits for the viewer to be mounted; start it from the Present tab.
   - Mac check still pending. The user commits everything at the end.
 - **Next:** P11 — Polish item (M6), Sonnet 5.5, new session, one item per run. Suggested first: roads + street labels (BGT or OSM), the biggest remaining gap to the references.
+
+### 2026-10-11 · Hosting for the team
+- **Built:** production mode in the server: serves `client/dist` (SPA fallback), `HOST`/`PORT` env, optional `ACCESS_PASSWORD` (HTTP Basic, `/api/health` exempt), `AI_HOURLY_LIMIT` cap on `/api/ai` POSTs. `npm start`, `Dockerfile`, `.dockerignore`, `render.yaml`, `DEPLOY.md`, `.env.example` entries. Tests 229 pass, typecheck and build pass; smoke-tested locally with the password on.
+- **Decisions:** one service (not split static + API) so there is no CORS and no client change. Hosted LLM needs `ANTHROPIC_API_KEY` (the Agent SDK's local Claude login does not exist on a host and is for personal use only).
+- **Open issues:** not yet deployed (needs the user's GitHub push and Render account). Docker build not run locally. `ANTHROPIC_API_KEY` with the Agent SDK on Linux is untested; check "Generate directions" after the first deploy.
+- **Next:** push, deploy via Render Blueprint, test AI buttons on the live URL.

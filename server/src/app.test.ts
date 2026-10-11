@@ -148,3 +148,24 @@ describe("config", () => {
     expect(() => loadConfig({ CACHE_MODE: "sometimes" })).toThrow(/CACHE_MODE/);
   });
 });
+
+describe("hosted mode", () => {
+  const basic = (pw: string) => ({ authorization: `Basic ${Buffer.from(`massing:${pw}`).toString("base64")}` });
+
+  it("asks for the shared password, except on the health check", async () => {
+    const app = createApp({ config: { ...config, accessPassword: "secret" } });
+    expect((await app.request("/api/scene/sample")).status).toBe(401);
+    expect((await app.request("/api/scene/sample", { headers: basic("wrong") })).status).toBe(401);
+    expect((await app.request("/api/scene/sample", { headers: basic("secret") })).status).toBe(200);
+    expect((await app.request("/api/health")).status).toBe(200);
+  });
+
+  it("caps AI calls per hour", async () => {
+    const app = createApp({ config: { ...config, aiHourlyLimit: 1 } });
+    const post = () => app.request("/api/ai/interpret-brief", { method: "POST", body: "{}" });
+    expect((await post()).status).not.toBe(503);
+    const second = await post();
+    expect(second.status).toBe(503);
+    expect(((await second.json()) as { error: { message: string } }).error.message).toMatch(/hourly AI limit/);
+  });
+});
