@@ -1,0 +1,256 @@
+/*
+ * Landing screen (UI-1). Colours only via the token custom properties set on .landing (tokens.ts).
+ *
+ * ABC Areal Superfamily Variable, axes MONO 0–100, wght 400–700, slnt −12–0, DRKM 0–1.
+ * Figma "Regular" = MONO 0 wght 400; "Semi Mono Regular" = MONO 50 wght 400.
+ * Files go in client/public/fonts/ (missing files fall back to an installed copy, then the stack).
+ */
+@font-face {
+  font-family: "ABC Areal";
+  src:
+    url("/fonts/ABCArealSuperfamilyVariable.woff2") format("woff2"),
+    url("/fonts/ABCArealSuperfamilyVariable.ttf") format("truetype"),
+    local("ABC Areal Superfamily Variable Regular"),
+    local("ABCArealSuperfamilyVariable-Regular");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.landing {
+  position: relative;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--black);
+  -webkit-font-smoothing: antialiased;
+}
+
+.landing *,
+.landing *::before,
+.landing *::after {
+  box-sizing: border-box;
+}
+
+.landing .box {
+  position: absolute;
+  margin: 0;
+}
+
+.landing .grid-line {
+  position: absolute;
+  box-sizing: content-box;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ---- type styles (size/line-height, letter-spacing) ---- */
+.landing .t-regular {
+  font-family: "ABC Areal", "Helvetica Neue", Arial, sans-serif;
+  font-variation-settings: "MONO" 0, "wght" 400;
+  font-weight: 400;
+}
+
+.landing .t-semimono {
+  font-family: "ABC Areal", ui-monospace, Menlo, Consolas, monospace;
+  font-variation-settings: "MONO" 50, "wght" 400;
+  font-weight: 400;
+}
+
+.landing .t-hook {
+  font-size: 24px;
+  line-height: 26px;
+  letter-spacing: -0.24px;
+  color: var(--blue);
+  text-align: center;
+}
+
+.landing .t-sub {
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--black);
+  text-align: center;
+}
+
+.landing .t-label,
+.landing .t-input {
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--black);
+}
+
+.landing .t-logo {
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: -0.16px;
+  color: var(--white);
+}
+
+.landing .accent {
+  color: var(--blue);
+}
+
+/* ---- pieces ---- */
+.landing .logo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 0 0 20px;
+  border: 0;
+  background: var(--blue);
+  text-align: left;
+  cursor: pointer;
+}
+
+.landing .window {
+  background: var(--white);
+  border: 1px solid var(--stroke);
+}
+
+.landing .input-band {
+  background: var(--background);
+  border: 1px solid var(--stroke);
+}
+
+.landing .hook {
+  transition: opacity 1500ms cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.landing .hook.hidden {
+  opacity: 0;
+}
+
+.landing .field {
+  background: var(--white);
+  border: 1px solid var(--stroke);
+}
+
+.landing .field input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 7px; /* + 1 px border = 8 px text inset */
+  border: 0;
+  outline: none;
+  background: transparent;
+}
+
+.landing .field input::placeholder {
+  color: var(--stroke);
+  opacity: 1;
+}
+
+.landing .field input:disabled {
+  color: var(--stroke);
+}
+
+.landing .ghost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.landing .ghost .typed {
+  visibility: hidden;
+}
+
+.landing .ghost .rest {
+  color: var(--stroke);
+}
+
+/* address suggestions: open upwards over the map, above the label */
+.landing .suggest {
+  list-style: none;
+  padding: 0;
+  background: var(--white);
+  border: 1px solid var(--stroke);
+  overflow: hidden;
+}
+
+.landing .suggest li {
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.landing .suggest li.on {
+  background: var(--background);
+  color: var(--blue);
+}
+
+.landing .go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: var(--stroke);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.landing .go.ready {
+  background: var(--blue);
+}
+
+.landing .go:disabled {
+  cursor: default;
+}
+
+.landing .toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--white);
+  border: 1px solid var(--stroke);
+  color: var(--black);
+  cursor: pointer;
+}
+
+.landing .toggle[aria-pressed="true"] {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--white);
+}
+
+.landing .globe {
+  position: absolute;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .hook {
+    transition: none;
+  }
+}
+
+/* ---- shuffle text (ShuffleText.tsx): invisible full text sizes the box, the live copy grows from the left ---- */
+.landing .shuffle {
+  position: relative;
+  display: inline-block;
+  white-space: pre;
+}
+
+.landing .shuffle-sizer {
+  visibility: hidden;
+}
+
+.landing .shuffle-live {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: pre;
+  text-align: left;
+}

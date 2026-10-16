@@ -15,6 +15,7 @@ import { AgentSdkClient } from "./ai/llm/agentSdkClient";
 import { GeminiClient } from "./ai/llm/geminiClient";
 import type { LlmClient } from "./ai/llm/types";
 import { aiRoutes } from "./routes/ai";
+import { geoRoutes } from "./routes/geo";
 
 export type AppDeps = {
   config: ServerConfig;
@@ -92,6 +93,7 @@ export function createApp({ config, providersFor, llm }: AppDeps) {
     }
   });
 
+  app.route("/api/geo", geoRoutes(config));
   app.route("/api/ai", aiRoutes(config, llm ?? defaultLlm(config)));
 
   // Production: serve the built client from the same origin (npm run build first).
