@@ -15,3 +15,22 @@ services:
         sync: false
       - key: AI_HOURLY_LIMIT
         value: "60"
+
+  # Separate preview of the new landing/globe UI, built from its own branch.
+  - type: web
+    name: massing-studio-ui
+    runtime: docker
+    plan: free
+    branch: ui/landing-globe
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ACCESS_PASSWORD
+        sync: false
+      - key: AI_HOURLY_LIMIT
+        value: "30"

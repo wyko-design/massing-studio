@@ -88,6 +88,40 @@ describe("geo routes", () => {
     expect((await geoRoutes(offline.config).request("/details?s=52.2&w=20.9&n=52.3&e=21.1")).status).toBe(503);
   });
 
+  it("returns streets with their class (links folded, single points dropped), queries a clamped box and caches; offline 503", async () => {
+    const { config } = await setup();
+    const calls: string[] = [];
+    const queries: string[] = [];
+    const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push(String(url));
+      queries.push(String((init?.body as URLSearchParams).get("data")));
+      return new Response(
+        JSON.stringify({
+          elements: [
+            { tags: { h: "residential" }, geometry: [{ lat: 52.0001234, lon: 4.3701234 }, { lat: 52.001, lon: 4.371 }] },
+            { tags: { h: "tertiary_link" }, geometry: { type: "LineString", coordinates: [[4.37, 52], [4.372, 52.002]] } },
+            { tags: { h: "footway" }, geometry: [{ lat: 52, lon: 4.37 }] },
+            { geometry: [{ lat: 52, lon: 4.37 }, { lat: 52.1, lon: 4.38 }] },
+          ],
+        }),
+      );
+    }) as typeof fetch;
+    const app = geoRoutes(config, { fetchImpl });
+    const url = "/streets?s=51.9&w=4.3&n=52.1&e=4.5";
+    const body = (await (await app.request(url)).json()) as any;
+    expect(body).toEqual([
+      { h: "residential", p: [[4.370123, 52.000123], [4.371, 52.001]] },
+      { h: "tertiary", p: [[4.37, 52], [4.372, 52.002]] },
+    ]);
+    // 0.2° asked, 0.03° queried around the centre
+    expect(queries[0]).toContain("(51.98500,4.38500,52.01500,4.41500)");
+    await app.request(url);
+    expect(calls).toHaveLength(1);
+    expect((await app.request("/streets?s=1&w=2")).status).toBe(400);
+    const offline = await setup("offline");
+    expect((await geoRoutes(offline.config).request(url)).status).toBe(503);
+  });
+
   it("returns water and borders from the vector tiles, cached; offline misses answer 503, bad boxes 400", async () => {
     resetTileJson();
     const { config } = await setup();

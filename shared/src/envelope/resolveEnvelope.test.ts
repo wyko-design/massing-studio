@@ -6,6 +6,7 @@ import { unknownConstraints } from "../constraints/overrides";
 import { edgeRoles, outwardBearing } from "./edges";
 import { insetPerEdge } from "./inset";
 import { resolveEnvelope } from "./resolveEnvelope";
+import coolsingel from "./__fixtures__/rotterdam-coolsingel-40.json";
 
 const assumed = { source: "test", status: "assumed" as const };
 const verified = { source: "plan", status: "verified" as const };
@@ -181,5 +182,20 @@ describe("resolveEnvelope", () => {
         expect(distanceToSegment(p, a, k2410[(i + 1) % k2410.length]!)).toBeGreaterThan(setbacks[roles[i]!] - 1e-6);
       });
     }
+  });
+});
+
+describe("resolveEnvelope on a real parcel that broke polygon-clipping", () => {
+  // Coolsingel 40, Rotterdam: the per-edge cuts made polygon-clipping throw ("Unable to complete output ring")
+  const ring = coolsingel as Ring;
+  it("returns a setback envelope instead of throwing", () => {
+    const c = unknownConstraints("test");
+    const prov: Provenance = { source: "test", status: "user_override" };
+    c.setbacks = { street: { value: 3, prov }, side: { value: 2, prov }, rear: { value: 4, prov } };
+    c.streetSide = { value: 172, prov };
+    const env = resolveEnvelope(ring, c);
+    expect(env.source).toBe("setbacks");
+    expect(env.footprint.coordinates.length).toBeGreaterThan(0);
+    expect(polygonWithHolesArea(env.footprint.coordinates)).toBeLessThan(polygonArea(openRing(ring)));
   });
 });

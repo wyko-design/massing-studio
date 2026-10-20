@@ -7,6 +7,8 @@ import {
   drawnLines,
   EDGE_CELLS,
   landingLayout,
+  lerpBox,
+  modelWindow,
   lineX,
   lineY,
   snapOrigin,
@@ -72,7 +74,7 @@ describe("computeGrid", () => {
     expect(L.window.r0).toBe(4);
     expect(L.window.r1).toBeLessThan(g.M);
     // tall enough: the viewport is used as is
-    expect(computeGrid(1280, 800, 1, LANDING_MIN_ROWS).height).toBe(800);
+    expect(computeGrid(1280, 1000, 1, LANDING_MIN_ROWS).height).toBe(1000);
   });
 });
 
@@ -153,5 +155,25 @@ describe("landingLayout", () => {
       expect(Math.abs(L.window.c0 - (g.N - L.window.c1))).toBeLessThanOrEqual(1);
       expect(L.window.r1).toBeLessThan(g.M);
     }
+  });
+});
+
+describe("modelWindow", () => {
+  it("is a square of the window's height, centred, on the same rows as the globe window", () => {
+    const g = computeGrid(1440, 928);
+    const win = landingLayout(g).window;
+    const sq = modelWindow(g);
+    expect(sq.c1 - sq.c0).toBe(win.r1 - win.r0);
+    expect([sq.r0, sq.r1]).toEqual([win.r0, win.r1]);
+    // equal margins left and right (within one cell)
+    expect(Math.abs(sq.c0 - (g.N - sq.c1))).toBeLessThanOrEqual(1);
+  });
+
+  it("lerpBox lands on whole pixels and on both ends", () => {
+    const a = { left: 0, top: 0, width: 10, height: 10 };
+    const b = { left: 5, top: 3, width: 21, height: 10 };
+    expect(lerpBox(a, b, 0)).toEqual(a);
+    expect(lerpBox(a, b, 1)).toEqual(b);
+    expect(Object.values(lerpBox(a, b, 0.37)).every(Number.isInteger)).toBe(true);
   });
 });

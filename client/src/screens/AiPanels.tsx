@@ -133,6 +133,7 @@ export function ExtractRulesPanel() {
   const overrides = useSiteStore((s) => s.overrides);
   const extracted = useSiteStore((s) => s.extracted);
   const setExtracted = useSiteStore((s) => s.setExtracted);
+  const sceneHasPlanText = useSiteStore((s) => (s.scene?.zoning?.textRefs?.length ?? 0) > 0);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const result = rules.result;
   const toggle = (key: string) =>
@@ -158,7 +159,7 @@ export function ExtractRulesPanel() {
       <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
         <b>Extract rules (AI)</b>
         <button onClick={() => void extractRules()} disabled={rules.status === "loading"} style={btn}>
-          Extract from plan excerpts
+          {sceneHasPlanText ? "Extract from the plan text" : "Extract from plan excerpts"}
         </button>
         {nExtracted > 0 && (
           <button onClick={() => setExtracted(NO_EXTRACTED)} style={btn} title="Remove every accepted extracted value">

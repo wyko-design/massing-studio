@@ -12,6 +12,9 @@ import type { CacheMode } from "../config";
 import { Bag3dContextProvider } from "../providers/nl/bag3d";
 import { parseWktPoint } from "../providers/nl/locatieserver";
 import { parcelUrl } from "../providers/nl/kadasterParcel";
+import { groundSurfaces, type Ground, type LonLatPolygon } from "./plotContext";
+
+export type { Ground, LonLatPolygon } from "./plotContext";
 
 const BASE = "https://api.pdok.nl/bzk/locatieserver/search/v3_1";
 const UA = { "user-agent": "massing-studio/0.1 (TU Delft course prototype)", accept: "application/json" };
@@ -85,9 +88,6 @@ export function bestCollation(json: unknown): string | null {
   return best?.q ?? null;
 }
 
-/** [lon, lat] rings (outer first, then holes) of one polygon. */
-export type LonLatPolygon = [number, number][][];
-
 export type Plot = {
   id: string;
   label: string;
@@ -97,12 +97,33 @@ export type Plot = {
   parcel: { id: string; areaM2: number | null; polygons: LonLatPolygon[] } | null;
   /** Width in metres of the frame (tighter axis) the plot is shown in. */
   frameM: number;
-  /** BAG buildings around it (the footprints 3DBAG builds its 3D model from), outer rings only. */
-  buildings: { id: string; ring: [number, number][] }[];
+  /** Where the surroundings were fetched around, [lon, lat]: the parcel's centre (else the address point). */
+  centre: [number, number];
+  /** Half side (m) of the square box the surroundings cover, around `centre`. */
+  radiusM: number;
+  /** BAG buildings around it (the footprints 3DBAG builds its 3D model from), outer rings only, with the 3DBAG height (m). */
+  buildings: { id: string; ring: [number, number][]; height: number }[];
+  /** BGT ground surfaces around it: water (current, ground level). */
+  ground: Ground;
 };
 
-/** Frame width: three times the parcel, at least 90 m (the surroundings are the point), at most 600 m. */
-export const frameFor = (parcelMaxDimM: number | null) => Math.max(90, Math.min(600, 3 * (parcelMaxDimM ?? 0)));
+/**
+ * Frame width: the parcel with a margin on each side as wide as the parcel itself, but at most 150 m (a large parcel needs
+ * its neighbours, not a district around it); at least 90 m. No upper limit, so every parcel fits.
+ */
+export const frameFor = (parcelMaxDimM: number | null) => {
+  const d = parcelMaxDimM ?? 0;
+  return Math.max(90, d + 2 * Math.min(d, 150));
+};
+
+/** Surroundings fetched for the 2D view: the frame's half-diagonal in a window up to ~1.5 : 1, plus a little. */
+export const plotRadius = (frameM: number) => Math.round(frameM * 0.95);
+
+/**
+ * Footprints smaller than this (m²) are left out of a large frame: under ~2 px across they are noise, and a district-sized
+ * frame would otherwise send tens of thousands of sheds.
+ */
+export const minFootprintM2 = (frameM: number) => (frameM <= 600 ? 0 : (frameM / 300) ** 2);
 
 type PerceelFeature = {
   properties?: { sectie?: string; perceelnummer?: number; akr_kadastrale_gemeente_code_waarde?: string; kadastrale_grootte_waarde?: number };
@@ -112,7 +133,10 @@ type PerceelFeature = {
 const toLonLat = (ring: number[][]): [number, number][] => ring.map((c) => rdToWgs84(c[0]!, c[1]!));
 
 /** The parcel feature that contains the point, with every polygon of it (a parcel can be several pieces). RD in, lon/lat out. */
-export function parseParcelFeature(json: unknown, point: { x: number; y: number }): { parcel: NonNullable<Plot["parcel"]>; maxDimM: number } | null {
+export function parseParcelFeature(
+  json: unknown,
+  point: { x: number; y: number },
+): { parcel: NonNullable<Plot["parcel"]>; maxDimM: number; centreRd: { x: number; y: number } } | null {
   for (const f of (json as { features?: PerceelFeature[] }).features ?? []) {
     if (f.geometry?.type !== "MultiPolygon") continue;
     const hit = f.geometry.coordinates.some((poly) => {
@@ -131,6 +155,7 @@ export function parseParcelFeature(json: unknown, point: { x: number; y: number 
         polygons: f.geometry.coordinates.map((poly) => poly.map(toLonLat)),
       },
       maxDimM: Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)),
+      centreRd: { x: (Math.max(...xs) + Math.min(...xs)) / 2, y: (Math.max(...ys) + Math.min(...ys)) / 2 },
     };
   }
   return null;
@@ -139,7 +164,7 @@ export function parseParcelFeature(json: unknown, point: { x: number; y: number 
 /** One address → its point, parcel and the buildings around it, every upstream answer through the disk cache. */
 export async function fetchPlot(
   id: string,
-  deps: { cacheRoot: string; mode: CacheMode; fetchImpl?: typeof fetch; dir?: string },
+  deps: { cacheRoot: string; mode: CacheMode; fetchImpl?: typeof fetch; dir?: string; radiusM?: number },
 ): Promise<Plot | null> {
   const fetchJson: JsonFetcher = createJsonFetcher({ cacheRoot: deps.cacheRoot, dir: deps.dir ?? "_adhoc", mode: deps.mode, fetchImpl: deps.fetchImpl });
   const lookup = new URLSearchParams({ id, fl: "id,weergavenaam,centroide_rd,centroide_ll" });
@@ -151,15 +176,22 @@ export async function fetchPlot(
 
   const found = parseParcelFeature(await fetchJson("kadaster", parcelUrl(rd)), rd);
   const frameM = frameFor(found?.maxDimM ?? null);
-  // the frame is wider than tall in the window, so its long half-side is about `frameM`; a little extra for the corners
+  // everything is fetched around the parcel's centre, where the views are centred (a large parcel's address point can lie
+  // hundreds of metres off it); the site model asks for a wider radius (its surroundings fill the window and can be panned)
+  const at = found?.centreRd ?? rd;
+  const radius = deps.radiusM ?? plotRadius(frameM);
   const bag = new Bag3dContextProvider(fetchJson);
-  const buildings = await bag.buildingsNear(rd, frameM * 1.1);
+  const [buildings, ground] = await Promise.all([bag.buildingsNear(at, radius), groundSurfaces(fetchJson, at.x, at.y, radius)]);
+  const minArea = minFootprintM2(frameM);
   return {
     id,
     label: doc.weergavenaam,
     point,
     parcel: found?.parcel ?? null,
     frameM,
-    buildings: buildings.map((b) => ({ id: b.id, ring: toLonLat(b.ring) })),
+    centre: rdToWgs84(at.x, at.y),
+    radiusM: radius,
+    buildings: buildings.filter((b) => !minArea || polygonArea(b.ring) >= minArea).map((b) => ({ id: b.id, ring: toLonLat(b.ring), height: b.height })),
+    ground,
   };
 }

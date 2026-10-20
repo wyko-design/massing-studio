@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { SiteConstraintsSchema, constrained } from "./constraints";
 import { ComplianceSchema, MassingParamsSchema, ProgrammeSchema, TypologySchema } from "./massing";
-import { PlanExcerptSchema } from "./siteFixture";
+import { PlanExcerptSchema, PlanTextRefSchema } from "./siteFixture";
 import { RingSchema } from "./site";
 
 // ---- Priorities (SPEC §7 brief interpreter → strategy generator) ----
@@ -80,6 +80,10 @@ export type ExtractablePath = z.infer<typeof ExtractablePathSchema>;
 export const ExtractRulesRequestSchema = z.object({
   /** Plan text to read; omitted = the excerpts of the active site fixture. */
   excerpts: z.array(PlanExcerptSchema).optional(),
+  /** Links to plan articles (from `scene.zoning.textRefs`); the server fetches the text itself. Used when `excerpts` is omitted. */
+  textRefs: z.array(PlanTextRefSchema).max(5).optional(),
+  /** Text (XML) of the municipal parking policy (`scene.parking.textUrl`), read in addition when its norm table could not be parsed. */
+  policyUrl: z.string().url().optional(),
 });
 export type ExtractRulesRequest = z.infer<typeof ExtractRulesRequestSchema>;
 

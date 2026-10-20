@@ -89,7 +89,10 @@ export const useAiStore = create<AiState>()((set, get) => ({
     const scene = useSiteStore.getState().scene;
     set({ rules: { ...idle(), status: "loading" } });
     try {
-      const { data, cached } = await api.extractRules({});
+      const textRefs = scene?.zoning?.textRefs;
+      // the parking policy text is read too when its norm table could not be parsed (other municipalities)
+      const policy = scene?.parking && scene.parking.rows.length === 0 ? scene.parking.textUrl : undefined;
+      const { data, cached } = await api.extractRules({ ...(textRefs?.length ? { textRefs } : {}), ...(policy ? { policyUrl: policy } : {}) });
       if (useSiteStore.getState().scene !== scene) return;
       set({ rules: { status: "done", result: data, error: null, cached } });
     } catch (e) {

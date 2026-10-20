@@ -5,8 +5,14 @@ import { CacheMissError } from "../cache/diskCache";
 import type { ServerConfig } from "../config";
 import { cachedJson } from "../geo/cache";
 import { fetchPlot, municipalityAt, suggestAddresses } from "../geo/address";
-import { clampBbox, fetchBoundary, fetchDetails } from "../geo/osm";
+import { STREETS_SPAN_DEG, clampBbox, fetchBoundary, fetchDetails, fetchStreets } from "../geo/osm";
 import { fetchTileData } from "../geo/tiles";
+
+/** Widest context radius a plot request may ask for (the site model's surroundings). */
+const MAX_PLOT_RADIUS_M = 2500;
+
+/** Version of the computed plot answer in the cache key (see the /plot route). */
+const PLOT_VERSION = "plot-2";
 
 /** Widest box for the tiles: 1.3 × the frame of the largest countries (a city's is up to ~3°). */
 const TILES_SPAN_DEG = 120;
@@ -63,6 +69,21 @@ export function geoRoutes(config: ServerConfig, deps: GeoDeps = {}) {
     }
   });
 
+  /** Streets and paths of the site model's box (OpenStreetMap), for the moving cars and people. */
+  app.get("/streets", async (c) => {
+    const [s, w, n, e] = ["s", "w", "n", "e"].map((k) => Number(c.req.query(k))) as [number, number, number, number];
+    if (![s, w, n, e].every(Number.isFinite) || s >= n || w >= e) return c.json({ error: "s, w, n and e are required." }, 400);
+    const bbox = clampBbox({ s, w, n, e }, STREETS_SPAN_DEG);
+    try {
+      const key = [bbox.s, bbox.w, bbox.n, bbox.e].map((v) => v.toFixed(5)).join(",");
+      return c.json(await cachedJson(config.cacheRoot, config.cacheMode, "streets", key, () => fetchStreets(bbox, deps.fetchImpl)));
+    } catch (err) {
+      if (err instanceof CacheMissError) return c.json({ error: err.message }, 503);
+      console.error(err);
+      return c.json({ error: "Could not load the streets." }, 502);
+    }
+  });
+
   /** Water polygons, shore and municipality borders for the city view (OpenFreeMap vector tiles), boxes up to 120°. */
   app.get("/tiles", async (c) => {
     const [s, w, n, e] = ["s", "w", "n", "e"].map((k) => Number(c.req.query(k))) as [number, number, number, number];
@@ -108,12 +129,21 @@ export function geoRoutes(config: ServerConfig, deps: GeoDeps = {}) {
     }
   });
 
-  /** One chosen address: its point, cadastral parcel and the BAG buildings around it. Cached per upstream request. */
+  /**
+   * One chosen address: its point, cadastral parcel and the BAG buildings around it (`r`: context radius in m, else from the
+   * parcel). Every upstream request is cached, and so is the finished answer (merging a large box's roads and water takes
+   * seconds); bump PLOT_VERSION when the answer's shape or contents change.
+   */
   app.get("/plot", async (c) => {
     const id = c.req.query("id") ?? "";
     if (!/^adr-[0-9a-f]{32}$/.test(id)) return c.json({ error: "A Locatieserver address id is required." }, 400);
     try {
-      const plot = await fetchPlot(id, { cacheRoot: config.cacheRoot, mode: config.cacheMode, fetchImpl: deps.fetchImpl });
+      const r = c.req.query("r");
+      const radiusM = r === undefined ? undefined : Number(r);
+      if (radiusM !== undefined && !(radiusM >= 50 && radiusM <= MAX_PLOT_RADIUS_M)) return c.json({ error: `r must be 50–${MAX_PLOT_RADIUS_M} m.` }, 400);
+      const plot = await cachedJson(config.cacheRoot, config.cacheMode, "plot", `${PLOT_VERSION}|${id}|${radiusM ?? ""}`, () =>
+        fetchPlot(id, { cacheRoot: config.cacheRoot, mode: config.cacheMode, fetchImpl: deps.fetchImpl, radiusM }),
+      );
       if (!plot) return c.json({ error: "Address not found." }, 404);
       return c.json(plot);
     } catch (err) {

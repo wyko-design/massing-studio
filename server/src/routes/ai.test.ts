@@ -1,11 +1,11 @@
-import { mkdtempSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_PROGRAMME, aiResponse, InterpretBriefResultSchema, type InterpretBriefRequest } from "@massing/shared";
 import { createApp } from "../app";
 import { loadConfig, type ServerConfig } from "../config";
-import { FakeLlmClient, type FakeStep } from "../ai/llm/fakeClient";
+import { FakeLlmClient, answer, type FakeStep } from "../ai/llm/fakeClient";
 import { SAMPLE_EXCERPTS } from "../ai/__fixtures__/samples";
 import briefRecording from "../ai/__fixtures__/briefInterpreter.json";
 import rulesRecording from "../ai/__fixtures__/constraintInterpreter.json";
@@ -72,6 +72,95 @@ describe("AI routes", () => {
     const res = await app.request("/api/ai/extract-rules", post({ excerpts: SAMPLE_EXCERPTS }));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true, data: { fields: expect.arrayContaining([expect.objectContaining({ path: "maxHeight" })]) } });
+  });
+
+  describe("rules from live plan text", () => {
+    const url = "https://ruimtelijkeplannen.nl/documents/NL.IMRO.0503.BP0005-2001/r_NL.IMRO.0503.BP0005-2001_2.3.html";
+    const html = readFileSync(path.join(import.meta.dirname, "..", "providers", "nl", "__fixtures__", "rp-text-bp0005-2.3.html"), "utf8");
+    const wire = {
+      fields: [{ path: "maxHeight", value: 5.5, quote: "de bouwhoogte oploopt van maximaal 5,5 m", excerptIndex: 0 }],
+      notes: [],
+    };
+
+    it("fetches the linked plan article and extracts from it", async () => {
+      const fetched: string[] = [];
+      const chapter = (n: number, article: number, name: string) =>
+        `<html><body><a href="r_NL.IMRO.0503.BP0005-2001_${n}.${article}.html">Artikel ${article} ${name}</a></body></html>`;
+      vi.stubGlobal("fetch", async (u: string) => {
+        fetched.push(u);
+        if (u.endsWith("_3.html")) return new Response(chapter(3, 20, "Algemene bouwregels"), { status: 200 });
+        if (u.endsWith("_1.html")) return new Response(chapter(1, 2, "Wijze van meten"), { status: 200 });
+        return new Response(html, { status: 200 });
+      });
+      try {
+        const { app, llm } = setup([answer(wire)]);
+        const res = await app.request("/api/ai/extract-rules", post({ textRefs: [{ title: "Bedrijventerrein, Plan", url }] }));
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { data: { fields: { path: string; constrained: { prov: { source: string; status: string } } }[] } };
+        expect(body.data.fields[0]).toMatchObject({ path: "maxHeight", constrained: { prov: { status: "extracted" } } });
+        expect(body.data.fields[0]!.constrained.prov.source).toContain("Bedrijventerrein");
+        expect(fetched[0]).toBe(url);
+        // the general articles of the same plan are read too
+        expect(fetched.some((u) => u.endsWith("_3.20.html"))).toBe(true);
+        expect(fetched.some((u) => u.endsWith("_1.2.html"))).toBe(true);
+        expect(llm.requests[0]!.user).toContain("de bouwhoogte oploopt van maximaal 5,5 m");
+        expect(llm.requests[0]!.user).toContain("Algemene bouwregels");
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("reads the municipal parking policy when its url is sent, and only from the official repository", async () => {
+      const fetched: string[] = [];
+      const xml = "<tekst><p>Algemeen.</p><p>Voor een woning geldt een parkeernorm van 1,5 parkeerplaats per woning.</p></tekst>";
+      vi.stubGlobal("fetch", async (u: string) => {
+        fetched.push(u);
+        return new Response(xml, { status: 200 });
+      });
+      try {
+        const policyUrl = "https://repository.officiele-overheidspublicaties.nl/cvdr/CVDR714401/1/xml/CVDR714401_1.xml";
+        const ok = setup([answer({ fields: [{ path: "parkingNorm", value: 1.5, quote: "een parkeernorm van 1,5 parkeerplaats per woning", excerptIndex: 0 }], notes: [] })]);
+        const res = await ok.app.request("/api/ai/extract-rules", post({ policyUrl }));
+        expect(res.status).toBe(200);
+        expect(await res.json()).toMatchObject({ ok: true, data: { fields: [{ path: "parkingNorm", constrained: { value: 1.5 } }] } });
+        expect(fetched).toEqual([policyUrl]);
+        expect(ok.llm.requests[0]!.user).toContain("parkeernorm van 1,5");
+
+        fetched.length = 0;
+        const foreign = await setup([]).app.request("/api/ai/extract-rules", post({ policyUrl: "https://evil.example/cvdr/CVDR1/1/xml/CVDR1_1.xml" }));
+        expect(foreign.status).toBe(422);
+        expect(fetched).toEqual([]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("never fetches links outside ruimtelijkeplannen.nl", async () => {
+      const fetched: string[] = [];
+      vi.stubGlobal("fetch", async (u: string) => {
+        fetched.push(u);
+        return new Response("x", { status: 200 });
+      });
+      try {
+        const { app } = setup([]);
+        const res = await app.request("/api/ai/extract-rules", post({ textRefs: [{ title: "x", url: "https://evil.example/documents/X/r_X.html" }] }));
+        expect(res.status).toBe(422);
+        expect(fetched).toEqual([]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("answers 503 when the plan text cannot be fetched", async () => {
+      vi.stubGlobal("fetch", async () => new Response("nope", { status: 500 }));
+      try {
+        const { app } = setup([]);
+        const res = await app.request("/api/ai/extract-rules", post({ textRefs: [{ title: "x", url }] }));
+        expect(res.status).toBe(503);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
   });
 
   it("replays the last answer offline and fails cleanly on a miss", async () => {

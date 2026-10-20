@@ -712,3 +712,253 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
   - Zoom-out from a plot passes through scales with an almost empty map (only borders), same as the zoom in.
   - `npm run dev` still hangs at server start; I ran the API standalone (`SERVER_PORT=8788 npx tsx src/index.ts`) next to Vite on 5174.
 - Nothing committed.
+
+### 2026-10-16 · UI-3b — Wider field, suggestion list snapped to the grid
+- **Built:** the field is 2 cells wider at every step (`LAYOUT.local.field` cols 3→11, button 11→12; still centred in the window). The address suggestion list now hangs from the field's bottom grid line with no gap, exactly as wide as the field (not the arrow button), one 32 px grid row per suggestion (max `SUGGEST_ROWS` = 5), so its bottom border sits on a grid line. `LANDING_MIN_ROWS` grew by the list rows, so short viewports scroll instead of clipping it. Grid tests updated (field 576/257 px at 1440×928; the tall-viewport case now 1000 px).
+- **Checks:** client tests 88 pass, typecheck passes; browser (Delft, "hendrik cas"): 5 rows below the field, field-wide. Nothing committed.
+
+### 2026-10-16 · UI-3c — Suggestions without the city; picking fills the field
+- **Built:** suggestion rows (and the ghost completion) drop the trailing place name (`shortAddress` in `geoApi.ts`: "…8, 2628KJ Delft" → "…8, 2628KJ"; without a postcode ", Delft" goes). Picking a row (click, Tab/→ on the top one, or Enter on a highlighted row) puts its short text into the field, closes the list and does **not** proceed; the arrow (or Enter with nothing highlighted / after picking) does. The pick is remembered (`chosen`) only while the field still shows exactly its text, so editing it falls back to the live suggestions. The plot label still shows the full address.
+- **Checks:** 1 new test, client typecheck; browser: click row 4 → field "Hendrik Casimirstraat 6, 2628KJ", list closed, globe unchanged; arrow → the plot flight. Nothing committed.
+
+### 2026-10-16 · UI-3d — Bar widens only for the address (replaces the UI-3b widening)
+- **Built:** `LAYOUT` is back to the original field (cols 4→10) and button (10→11); `CountryInput` widens the bar by one cell on each side (field 3→11, button 11→12, so it stays centred) while the step is `address` or `plot`, with a 600 ms ease on the field, button and label (`landing.css`, off with reduced motion). The suggestion list still hangs from the field's bottom line at the field's width, one grid row each. Grid tests are back to the original field numbers.
+- **Checks:** 89 client tests, typecheck; browser: globe, country and city steps show the short bar, the address step the long one. Nothing committed.
+
+### 2026-10-16 · UI-3e — Bar widens when the text resolves
+- **Built:** the address bar widens (UI-3d) only once the label's final pass starts (`resolving`, fired 0.5 s before the city zoom ends) or the globe has settled on the city (`phase === "city"`), and stays wide for the plot step. During the pan and the zoom it keeps the short bar. Typecheck passes; browser: narrow while the label scrambles, wide at the end of the zoom. Nothing committed.
+
+### 2026-10-16 · UI-3f — Bar widens just before the text resolves
+- **Built:** a second cue in the renderer, `widenCue` (`WIDEN_LEAD_MS` = 650 ms before `resolveCue`, i.e. 1 150 ms before the camera stops): the store's `widen` flag starts the 600 ms widening of the address bar, so it is fully wide ~50 ms before the label's final 0.4 s sweep begins. `resolving` and `phase === "city"` still force it wide as a fallback; the plot step stays wide. Changing the CSS transition time means changing `WIDEN_LEAD_MS` too.
+- **Checks:** typecheck, 89 client tests. **Not measured in the browser:** the preview pane ran at ~2 fps (the machine was loaded by other processes), too slow to time the bar against the sweep. Nothing committed.
+
+### 2026-10-16 · UI-4 — Plot view: neighbouring parcels and BGT ground
+- **Data (server, `server/src/geo/plotContext.ts`, endpoints checked against the live PDOK services):**
+  - Neighbouring parcels: Kadaster `perceel` for the same box (limit 1000), the plot's own parcel left out (matched by "municipality section number").
+  - BGT OGC API (`api.pdok.nl/lv/bgt/ogc/v1`): `wegdeel`, `ondersteunendwegdeel` (road), `begroeidterreindeel` (green), `onbegroeidterreindeel` (yard), `waterdeel`, `ondersteunendwaterdeel` (water), following `next` links (≤ 3 pages). **BGT keeps superseded object versions** (they carry `eind_registratie`), so every query uses CQL2 `filter=eind_registratie IS NULL AND relatieve_hoogteligging = 0` (current, ground level; no bridges or tunnels). Without it a 100 m box returned 182 road polygons instead of 53.
+  - Rings are simplified to 5 cm (Douglas–Peucker, mm-precise BGT curves are dense chains) and rounded to 7 decimals: the Delft plot payload went from 1.75 MB to 235 kB (255 buildings, 111 parcels, 140 road / 63 green / 39 yard / 12 water polygons).
+  - `/api/geo/plot` now also returns `parcels` and `ground`; every upstream answer goes through the disk cache.
+- **Client:** `PlotLayer` holds the parcel lines and ground pieces; drawn with the buildings' fade-in (`buildingAlpha`), tokens only (`globeStyle.plot`): green flat `gridLine` fill, roads and paving white with a `gridLine` outline, yards outlined only, water white with the grey border line, neighbouring parcels grey dashed hairlines; then buildings (white, grey outline), the blue plot's dots and outline on top.
+- **Checks:** typecheck, tests (+ 4 server tests: geometry reading, the BGT filter and bbox, own-parcel exclusion and kind grouping with pagination, ring simplification), browser (Hendrik Casimirstraat 8): dashed parcel grid, road/path outlines, green fills around the blue plot. Nothing committed.
+- **Open:** the map is dense at the final zoom (all BGT road/path outlines); thin or drop `yard` and `road` outlines if it reads too busy. Not drawn: BGT street furniture, trees, bridges, railways.
+
+### 2026-10-16 · UI-4b — Green areas and yards removed
+- **Built:** BGT `begroeidterreindeel` and `onbegroeidterreindeel` are no longer fetched or drawn; the plot's `ground` is `{ road, water }` only (server `GROUND_COLLECTIONS`, client `GroundKind`, `globeStyle.plot` lost `greenFill`/`yardLine`). Delft payload 235 → 181 kB. Typecheck, 313 tests pass; the 8787 server was restarted. Nothing committed.
+
+### 2026-10-16 · UI-4c — Paving/roads and neighbouring parcels removed
+- **Built:** the plot no longer fetches or draws BGT roads and paving or the neighbouring cadastral parcels (`neighbourParcels`, `parcelsUrl` and the `parcels` field are gone). BGT is now water only (`waterdeel`, `ondersteunendwaterdeel`, same current/ground-level filter), white with the grey line; the plot view shows the blue parcel with dots, the 3DBAG footprints and any water. Delft payload 181 → 84 kB. Typecheck, 313 tests, browser check (Hendrik Casimirstraat 8) pass; the 8787 server was restarted. Nothing committed.
+
+### 2026-10-16 · UI-4d — Roads back, simplified (carriageways only, merged)
+- **Built:** BGT `wegdeel` is back, but only carriageways (CQL `functie LIKE 'rijbaan%' OR functie = 'woonerf'`; footpaths, cycle paths and parking stay out; `ondersteunendwegdeel` is not used). Per kind the pieces are rounded to 1 cm, **unioned** with polygon-clipping (server dependency added, already hoisted), simplified to 0.3 m and cleaned of holes under 40 m² and pieces under 25 m² (`mergePolygons`, `MERGE` in `plotContext.ts`; water gets the same). Delft: roads 3 polygons / 134 points (was 140 polygons), payload 79 kB. Roads are drawn white with a `gridLine` outline under the buildings; no neighbouring parcels, no green, no yards.
+- **Checks:** typecheck, 315 tests (+2: merge/slivers, carriageway filter), browser (Hendrik Casimirstraat 8): the road reads as one smooth shape. 8787 server restarted. Nothing committed.
+- **Tuning:** `MERGE.toleranceM` (0.3) is the simplification; raise it for smoother and blockier roads.
+
+### 2026-10-16 · Live zoning from ruimtelijkeplannen.nl (M2/M7 data, no API key)
+- **Built:**
+  - `server/src/providers/nl/ruimtelijkePlannen.ts`: `RuimtelijkePlannenZoningProvider` behind the shared `ZoningProvider` interface. Parcel → a point inside it → plans at the point → the newest adopted municipal bestemmingsplan that has structured data → `SiteConstraints`.
+    - Mapped: enkelbestemming names → `allowedFunctions`; bouwvlak polygon (RD) → `bouwvlak`; maatvoering `maximum bouwhoogte` / `maximum goothoogte` / `maximum bebouwingspercentage` → `maxHeight` / `maxGutterHeight` / `maxCoverage` (÷100).
+    - Provenance: `extracted`, `quote` = the raw `"label"="value"`, `source` = plan name, id and date. Everything the plan does not give stays `null` + `assumed`, so the PLACEHOLDER state stays on until the user fills it.
+    - Notes: link to the plan text for the bestemming, dubbelbestemmingen (archeologie etc.), maatvoeringen the generator cannot use, other plans on the point, and a standing warning that values are read at one point of a public viewer that can be outdated.
+  - `FirstZoningProvider`: fixture first, live second; a failing live source counts as "no answer".
+  - `createJsonFetcher` takes per-provider headers; a 200 response that is not JSON is never cached (the site answers with an HTML page when a request is not accepted).
+  - `ZoningResult.label` / `SiteScene.zoning.label` (optional): source in words for the Constraints screen and `meta.sources`.
+  - `server/scripts/probe-zoning.ts`: `npx tsx scripts/probe-zoning.ts ["address" ...]` prints what the live source fills per address.
+  - Tests: 329 pass (was 327). Recorded real responses in `server/src/providers/nl/__fixtures__/rp-*.json`.
+- **Endpoints (probed live, not documented APIs; the site's own viewer backend):**
+  - `GET https://www.ruimtelijkeplannen.nl/plannenservice/plannen/xy/{x}/{y}` (RD metres)
+  - `GET https://www.ruimtelijkeplannen.nl/web-roo/rest/bestemmplangebied/id/{planId}/xy/{x}/{y}?buffer=1`
+  - Both need header `dummy: dummy` (published in the site's `/assets/config/http-security-header.config.json`); without it they return the HTML shell.
+- **Coverage measured (16 addresses in and around Delft):** 14 had structured plan data. Filled: bestemming 14, bouwvlak 11, max height 7, max gutter height 4, max coverage 2. Setbacks, FAR, parking and street side are never filled by this source.
+- **Decisions:**
+  - Conflicting heights at one point → the lowest, with a note.
+  - Plans in the `plangebied_pcp` format (old plans, e.g. TU-Noord 2009) and umbrella plans (Flitsbezorging, Facetherziening parkeren) have no structured data and are skipped.
+  - Fixture wins over live data for the same parcel.
+- **Deviations from SPEC.md:** the spec lists live zoning retrieval as out of scope (DSO key needed). This is a keyless partial source instead; zoning from fixtures stays the reliable path. The spec's "live DSO" future work is unchanged.
+- **Open issues:**
+  - **The stand-in plot K 2410 (Hendrik Casimirstraat 8) gets no live data**: its plan is the old TU-Noord (pcp) one, so the fixture / placeholder still applies there.
+  - Unofficial backend: the `dummy` header, paths or response shape can change; the site itself says its data is incomplete and may be outdated since the Omgevingswet (rules move to DSO). Terms of use not checked.
+  - Rules are read at one point (inside the parcel), not for the whole plot.
+  - Max height is missing where the plan states it differently (bouwaanduiding, per-bestemming text). The plan text URL is stored in a note; feeding that text to the constraint interpreter (extract-rules) is the natural next step.
+  - `maxCoverage` uses "bebouwingspercentage terrein" when that is the label given; plans that give it per bouwvlak read the same way.
+  - Demo cache: live plan answers for the demo address are not seeded (none exist for K 2410). Other addresses cache in `data/cache/_adhoc/` (git-ignored).
+- **Next:** fetch the plan text behind the `verwijzingNaarTekstURL` notes and feed it to `extract-rules`, so rules the maatvoering lacks (setbacks, extra height rules) can be filled with quotes; check the site's terms of use; swap for the DSO API if a key ever becomes available.
+
+### 2026-10-16 · Plan text → Extract rules (live plan data)
+- **Built:**
+  - `server/src/providers/nl/planText.ts`: reads the plan article behind each live enkelbestemming (`verwijzingNaarTekstURL`) and cleans it to text. IMRO2008 plans = one small page per article; IMRO2012 plans = one big document, cut to the anchored article (`#_15_Wonen`). `isPlanTextUrl` only allows `https://(www.)ruimtelijkeplannen.nl/documents/<plan>/r_*.html` (the client sends the links, so they are validated). Max 3 links, 14 000 characters each.
+  - `createTextFetcher` (disk cache, `.txt`), used under `data/cache/_adhoc/` only.
+  - `ZoningResult.textRefs` → `scene.zoning.textRefs` → client sends them to `POST /api/ai/extract-rules` (`textRefs`, new optional field). Order of sources: request `excerpts` → fetched `textRefs` → site fixture excerpts. Fetch failure → 503; unreadable text → 422.
+  - Client: the button reads "Extract from the plan text" when the scene has links.
+  - Tests: 340 pass (was 329): HTML cleaning on a real page, anchor cut, URL allowlist (no foreign hosts, no fetch), shared-document fetched once, route with stubbed fetch.
+  - Bug found by test and fixed: the anchor cut started inside the opening tag.
+- **Live check (real model):** Schieweg 64A (BP0005, IMRO2008) 16 s and Voorhofdreef 20 (BP0031, IMRO2012, anchored article) 33 s. Every quote passed the verbatim check.
+- **Finding:** on these plans the text adds **no new numbers**. Height, gutter height and coverage are written as "zoals aangegeven met de aanduiding 'maximum …'", i.e. they live on the map (already read by the maatvoering step). Setbacks, FAR and parking are not stated in the bestemming article. What the text does add: the bestemming list in the plan's words and ~10–15 notes with quotes (extension depth, dormers, fences, deviation powers, uses only at certain aanduidingen). Numbers in those notes stay in the quote, not in fields.
+- **Open issues:**
+  - Only the bestemming article is read. General articles (begrippen, algemene bouwregels, afwijkingsregels) are not, and may hold setback-like rules. Cheap to add for IMRO2012 documents (anchor `_<n>_Algemenebouwregels`).
+  - A plan can name numbers per aanduiding (e.g. "maximaal 5,5 m aan de zuidzijde") that apply to part of the area; the model puts these in notes.
+  - Extraction takes 16–33 s per call (long articles); cost is the Claude plan's.
+- **Next:** decide whether to add the general-rules articles; otherwise zoning numbers beyond the map values need the DSO API or hand entry.
+
+### 2026-10-16 · More automatic data: multi-point plan reading, general articles, street side, restrictions
+- **Built:**
+  - `ruimtelijkePlannen.ts`: reads the plan at up to 5 points of the plot (centre + 4 spread, none within 3 m of another) and merges objects by id. The bouwvlak used is the one holding most sample points; only the maatvoering that names that bouwvlak (`Bouwvlak=<id>`) or none counts (a 3 m outbuilding limit no longer wins over 18 m). Other bouwvlakken's maatvoering goes in a note. Aanduidingen (bouw-, functie-, gebiedsaanduidingen, figuren, e.g. "geluidzone - industrie") become notes.
+  - `planText.ts`: `generalRefs` finds the general articles of the plan (algemene bouwregels / afwijkingsregels / aanduidingsregels, wijze van meten; not begrippen) for both layouts: anchors in the IMRO2012 document, chapter pages `_1.html` and `_3.html` for IMRO2008. `fetchPlanExcerpts(..., { general: true })` appends them (max 4, 10 000 chars each); "Extract rules" uses it. A failure there never blocks the bestemming text.
+  - `streetSide.ts`: `streetSide` is derived from the nearest BGT carriageway (bearing from the plot boundary to the road; roads within 40 m; parcels over 20 000 m² skipped). It replaces a missing or `assumed` value only, never verified / extracted / overridden ones. On K 2410 it gives 67°, matching the earlier hand estimate of 65°.
+  - `restrictions.ts`: notes from PDOK layers: heritage (RCE protected areas), Wkpb public-law restrictions still in force, foundation-risk attention areas. Flood-risk layer exists but is empty for Delft, so not used. None changes a number.
+  - `scene.ts`: `enrichConstraints` + optional `streetSide` / `restrictions` in `SceneProviders`; both are optional and a failure only logs a warning. Sources list names them.
+  - Demo cache seeded: 4 new files in `data/cache/placeholder/` (BGT road, 3 PDOK layers); verified the demo address loads with `CACHE_MODE=offline`.
+  - `scripts/probe-zoning.ts` now also reports street side, notes and restriction counts.
+  - Tests: 367 pass (was 343).
+- **Coverage (16 addresses in and around Delft):** plan data 14/16. Fields: bestemming 14, bouwvlak 13 (was 11), max height 10 (was 7), gutter height 4, coverage 2. Street side 11/16. Restriction notes 16/16.
+- **Findings:**
+  - The general articles of the Delft plans contain no setback numbers; these plans use the bouwvlak as the buildable area, so setbacks stay unknown while the bouwvlak is used (envelope order: bouwvlak first).
+  - With the real model the text step again adds only the bestemming list and notes with quotes; height and coverage are map values.
+  - Parcels the cadastre returns for estates or blocks (e.g. 250 000 m²) have no single street side and several bouwvlakken.
+- **Bugs found by tests/live runs and fixed:** anchor cut started inside a tag; bearing could round to 360; a low-rise bouwvlak's height won over the main one.
+- **Open issues:**
+  - Not automatable from the sources found: setbacks (when the plan has none), FAR, parking norm (municipal policy documents), the omgevingsplan rules that exist only in DSO (needs the key).
+  - The restriction layers are indicative: the foundation layer is per postcode, Wkpb only lists registered restrictions.
+  - Only the Netherlands. Other countries need their own providers behind the same interfaces.
+  - Real-model extraction takes 11–33 s per call.
+- **Next:** parking norm and FAR from municipal policy are the biggest remaining gaps; the DSO API would close the rest.
+
+### 2026-10-16 · Municipal parking policy → parking norm
+- **Built:**
+  - `server/src/providers/nl/cvdr.ts`: finds a municipality's regulation in the national register of local regulations (CVDR) with the open SRU search (**SRU 1.2**; 2.0 answers 406) and fetches its XML from `repository.officiele-overheidspublicaties.nl`. No key. Text converter `regulationText`.
+  - `parkingPolicy.ts`: reads the housing table of Delft's "Beleidsregels Parkeernormen Delft 2023" (CVDR714401): 5 dwelling-size bands + student + care rows × 6 zones (autoluw-plus, Binnenstad, rest bebouwde kom, buitengebied, TU campus, Schieoevers Noord), residents and visitors. The parser checks the header, the 12 numbers per row and that the size bands have no gaps; on anything else it returns an empty table (never a wrong norm). Also copies 4 housing sentences from the policy verbatim, and guesses the zone from the plan names at the plot (`suggestZone`).
+  - Shared `constraints/parking.ts`: `ParkingPolicySchema`, `rowFor`, `parkingNormFrom` (residents + visitors, rounded to 2 decimals), `applyParking` (fills `parkingNorm` only when unknown or `assumed`; zone chosen by the user → `extracted`, zone guess → stays `assumed`, with "zone is a guess" in the source).
+  - Scene: `scene.parking` (policy for the geocoded municipality); `GeocodeResult.municipality` from Locatieserver `gemeentenaam`; `planNamesAt` in the plan provider. Failures only log.
+  - Client: `siteStore` holds `parkingZone`; `useConstraints` / `effectiveConstraints` apply the norm from the zone and the programme's unit size, so compliance, the AI directions request and the report all use it. New "Parking policy" panel on the Constraints screen (zone picker, the norm in words with residents + visitors, policy sentences). `siteStore` ⇄ `massingStore` import each other on purpose (read at call time only).
+  - AI fallback for municipalities whose table cannot be parsed: `ExtractRulesRequest.policyUrl`; the server reads the regulation XML (official repository only), keeps the housing lines with numbers (max 12 000 chars) and adds them to the excerpts of "Extract rules".
+  - `.claude/launch.json`: `massing-api-4` (server via `npm run start`, port 8801) and `massing-web-4` (client, 5190).
+  - Demo cache seeded (`data/cache/placeholder/`: SRU answer, regulation text, plan list, BGT, PDOK layers); demo address loads offline with the policy.
+  - Tests: 397 pass (was 367); typecheck and build pass. Browser check: guessed zone Campus TU Delft → 0,6 spaces for a 65 m² dwelling (assumed); picking Binnenstad → 0,4 (extracted, "a maximum"); Directions compliance shows "Needs 1 spaces (2 units × 0.4/unit, extracted)".
+- **Decisions:**
+  - Norm = residents + visitors, per dwelling, from the band of the programme's average unit size (treated as GO). The policy's cap of one resident space per dwelling is not needed for the current table values (max 1,0).
+  - The zone map is only a figure in the policy; no data layer found. Plan names are a stand-in (`Binnenstad` → binnenstad, `Schieoevers Noord`, `TU`/`campus`, `Buitengebied`, else rest). The autoluw-plus part of the centre cannot be told apart; the user picks it.
+  - A guessed zone keeps the norm `assumed`, so the PLACEHOLDER state stays on until the zone is chosen.
+- **Deviations from SPEC.md:** none (parking was listed as a constraint, `parkingNorm`; compliance still reports it as `unknown` because parking is not modelled).
+- **Open issues:**
+  - Delft only for the table; other municipalities rely on the AI reading the policy text (`policyUrl`), not tested against a real model call yet.
+  - The old cached Locatieserver answer for the demo address remains in `data/cache/placeholder/` next to the new one (the request now asks for `gemeentenaam`); harmless.
+  - `massing-dev-alt` in launch.json cannot start the server: the server reads `PORT` first (hosting change), and that entry sets `PORT` for the client. Also `tsx watch` hangs the server in the preview environment (known SDK issue), so use `massing-api-4` + `massing-web-4`.
+  - FAR: not regulated by Dutch plans; left unknown (not marked "not regulated" because absence in the map data does not prove the text has no such rule).
+  - Mac check still pending; the user commits everything at the end.
+- **Next:** pick the zone for the real site (M7); optional: add other municipalities' tables or test `policyUrl` with a real model call on one.
+
+## Landing: back arrow (UI side session)
+- **Built:** a "Back" button left of the search bar at the country, city and address levels. It is the mirror (scaleX(-1)) of the blue button's arrow, 16 px, drawn in `--stroke`, no background, one grid cell left of the field, so it keeps the same gap as the white arrow. It fades in (600 ms, same easing as the bar) once the camera has landed or at the widen/resolve cues, and moves with the bar when it widens for the address. It is a real `<button aria-label="Back">`, disabled during flights.
+- **Behaviour:** `landingStore.back()`: plot -> address step (new phase `backToCity`), address step -> city step (`backToCountry`), city step -> `reset()` (zoom out to the idle globe). `GlobeRenderer.backToCity` / `backToCountry` zoom out and swap the blue back (new methods; `Globe.tsx` calls them when `address` / `city` become null).
+- **Checked:** `npm test` (397) and typecheck pass; clicked through globe -> NL -> Delft -> Mekelweg 5 and back out at every level in the browser.
+- **Deviations / open:** no unit test for the store transitions or the renderer methods (UI/canvas). The label scrambles briefly on back (no resolve cue on zoom-outs). Not committed.
+
+## Landing: plot step and rules window (UI side session)
+- **Built:** at the plot step the label reads "Address, Postcode, City, CC" in blue and the read-only field "Plot #<number> · <area> m²" (from the Kadaster parcel id and area; `landingStore.plot`, set by `Globe` via `onPlot`). The arrow is blue and clickable at once. It opens a second window right of the globe window (same size, border, white fill; the two are centred together, so the globe window moves left): `RulesPanel.tsx`. It loads the scene for the address (`siteStore.load`) and lists every number/list rule as KNOWN (blue, with source), PLACEHOLDER or NEEDS INPUT (dashed box, slider + text box, list text box). "Fill all with placeholders" fills only the missing rules. The continue arrow turns blue when all have a value; **not wired**.
+- **Decision:** placeholder fills go through `siteStore.fillPlaceholders` and stay status `assumed` (new `placeholders` list, third arg of `applyOverrides`), so the PLACEHOLDER watermark logic is unchanged; editing one by hand makes it `user_override`. Polygon/line rules (bouwvlak, building line) are shown only when the plan has them; they cannot be typed.
+- **Checked:** typecheck, 397 tests, clicked through NL → Delft → Mekelweg 5 → arrow → fill all in the browser (1440 wide). No unit tests for the panel; below ~33 grid columns (≈1060 px) the second window does not fit.
+- **Next:** wire the continue arrow to the next screen.
+
+## Landing: logo reload, country shore, city transition (UI side session)
+- Logo click now does `window.location.reload()` (was `reset`).
+- Grey outline under the blue country: the blue outline came from the Natural Earth polygon, the grey shore from the OpenStreetMap water tiles, so they differed. `GlobeRenderer.toCountry` now cuts the tiles' water out of the country polygon (`landOnly`, ~200 ms, during the pan) for the blue outline (`selectedPieces`); the whole polygon stays in `selectedFill` for the grey fill.
+- Holes / white water on city zoom: when the blue fades to the grey fill, the country tiles' white water bodies (IJsselmeer, lakes) were suddenly the only white shapes in it. The country layer's water now fades in with the zoom (`aCountryWater`), together with the city's tiles.
+- Open: a few small harbour inlets still show a grey line next to the blue (the clip drops tiny water pieces). Checked by jumping the renderer to states in the browser; no unit tests (canvas).
+
+## Landing: "Found" strip and full-height map (UI side session)
+- Plot step: the field is a read-only strip on `--background` reading "Found:" + a 16 px chip (`--stroke` fill, no border, 4 px side padding) with "Plot #… · … m²" (`.field.found`, `.chip` in landing.css).
+- Arrow click (rules window opens): `CountryInput` renders nothing and the input band is removed, so the bottom section of the globe window is gone; `Landing.useExpand` grows the map canvas to the full window height over 450 ms and the renderer re-centres the plot each frame (`place`).
+- Side effect: with the bottom section gone there is no back arrow while the rules window is open; the logo (reload) is the way out.
+
+## Landing: site model after the rules (UI side session, 2026-10-17)
+- **Built:** the rules window's continue arrow (blue once every rule has a value) opens the site model. At the same time: the rules window fades out (300 ms), the globe window grows to a square of its own height and moves to the page centre (1 200 ms, `modelWindow` / `lerpBox` in `grid.ts`), the 2D plot map fades out over an identical three.js copy (`model/SiteModel.tsx`, lazy chunk), and the camera turns from the top view (north up, the 2D view's px/m) to a true isometric from the south-west, pulling back to fit the model square (`fit` 0.9 of the final width). Buildings rise to their 3DBAG heights in a ripple from the plot outwards; the buildable envelope from the rules just filled rises last as a dashed blue ghost with a faint fill; then cars and people appear and move. Orbit (rotate + zoom, no pan, orthographic) is on once the camera lands.
+- **Look (user choices):** line drawing — white faces, grey (`--stroke`) edges, no shading; ground square in `--background` with a grey edge (hard square clip, no plinth); roads white with the `--grid-line` outline at ground level; water as in the 2D view. The plot keeps its blue border and dots, drawn over everything (as the 2D view draws them). People are `--black` figures, cars white boxes with grey edges.
+- **Data:**
+  - `/api/geo/plot` buildings now carry the 3DBAG `height` (it was dropped before).
+  - New `GET /api/geo/streets?s&w&n&e` (`fetchStreets` / `parseStreets` in `server/src/geo/osm.ts`): OSM highway lines through the same Overpass client and query form as `/details`, box clamped to 0.03°, cached via `cachedJson` (`data/cache/_geo/streets-*.json`; the demo plot's file is there now). Cars drive motorway…residential + living_street (keeping right, 1.6 m); people walk footway / path / pedestrian / living_street and pavements generated 1.5 m beyond each residential…primary carriageway, cut where they would cross a building or water. No streets (offline miss, Overpass down) = no traffic, everything else unchanged.
+- **Code:** pure, tested modules `model/modelData.ts` (plot → local metres around the 2D view's centre, every layer clipped to the square with polygon-clipping; ripple order; envelope scene-RD → lon/lat → local, so RD's ~0.8° grid rotation does not shift the ghost) and `model/movers.ts` (Liang–Barsky line clipping, pavement offsets, graph from shared OSM nodes, movers that pick a random way at junctions, turn at inner dead ends and respawn at the model's edge). Timing and colours in `model/modelStyle.ts`.
+- **Hand-over:** the 3D copy is built hidden 800 ms after the rules have loaded (`prewarmMs`; `frameloop="demand"` until it starts). Building it stalls the page for ~1 s, which is now spent while the user reads the rules: click → start measured at 13 ms (was 1.2 s), then 60 fps (median frame 16.7 ms) at 1622×862, dpr 1. A click before the prewarm builds it at once (`model: "waiting"`). Checked in the browser that the hidden 3D top view and the 2D map have the same rectangle (479×607) and line up.
+- **Other:** `vite.config.ts` pre-bundles `three/examples/jsm/utils/BufferGeometryUtils.js`; without it the first dev visit reloaded the page in the middle of the flow.
+- **Checks:** 413 tests (+ grid square/lerp, modelData 6, movers 8, streets route 1), typecheck, build. Browser (Hendrik Casimirstraat 8, Delft): full flow, final iso model with envelope ghost, people on the pavements and footpaths, cars on the street, orbit zoom.
+- **Decisions / deviations:** heights unknown in 3DBAG draw as a flat 0.2 m footprint (visual context only, not a planning value). The model square's half side covers the whole 2D view at the hand-over (`0.51 × max(w, h) / px-per-m`), so the iso view shows a diamond ~1.3 × `frameM` wide. No SPEC deviation (the site model is a landing-flow view; the studio viewer is unchanged).
+- **Open issues:**
+  - The continue arrow of the site model's own next step does not exist yet: the model is the end of the landing flow for now; the logo reloads.
+  - No back arrow from the model to the rules.
+  - People and cars do not avoid each other; cars pass through each other at junctions.
+  - Reduced motion: jumps to the final model, no traffic.
+  - Overpass can be slow for a first visit to a new site (the traffic appears when the streets arrive). Commit `data/cache/_geo/streets-*.json` for the demo site if it must run offline.
+  - Mac / dpr 2 not checked: lines use drei `Line` (1 CSS px), points are 1.5 CSS px.
+- **Next:** decide what the model screen leads to (brief input / "Generate directions" in this window?), and whether the envelope ghost should follow live edits of the rules there.
+
+## Landing: site model as a pannable world (UI side session, 2026-10-17, replaces parts of the entry above)
+- **Changed on the user's review:**
+  - **No cars.** `movers.ts` now builds only the walking graph (`walkGraph`, was `trafficGraphs`); people only (up to 120, 1 per 25 m of path/pavement).
+  - **The model fills the window, no square base.** The ground (`--background`) runs 8× past the data, without an outline. The surroundings come from a second plot request with a wider radius: `GET /api/geo/plot?id&r=` (new optional `r`, 50–400 m; `fetchPlot(..., { radiusM })`), radius `contextRadius(frameM)` = 2.2 × frameM within 180–400 m (`modelStyle.context`). Landing starts that request as soon as the rules window opens; when it fails the model falls back to the 2D plot's data (and the limits then zoom in). Delft demo: 575 buildings, 9.1 s on the first (uncached) request, 211 kB.
+  - **Pan and zoom limits keep the end of the data out of view.** `viewLimits(w, h, frameM, radius)`: the end view shows 1.15 × frameM across the window (closer than before). Zoom-out stops at 0.8× the end view, the tilt at 62°, and pan stops `0.3 × view width` from the plot (`PanLimit` clamps the orbit target). At the furthest zoom-out, steepest tilt and furthest pan, the visible ground still lies within 95 % of the data radius (unit-tested for frames of 90–600 m). Left drag pans over the ground, right drag turns, wheel zooms; one finger pans on touch.
+  - **White wash at the edges**, the same as the 2D views: a CSS overlay (`.site-wash`, four gradients, 56 px, quadratic falloff = `globeStyle.vignetteWidth`), so the hand-over still matches.
+  - **Simpler context buildings** (`mergeBlocks` in `modelData.ts`): footprints that touch (corner within 0.3 m of the other's wall) and are within 1.5 m in height become one block. Corners are first snapped onto the neighbour's wall so that the union closes; the block height is the area-weighted mean. Every outline is then simplified (Douglas–Peucker 0.6 m), holes under 9 m² and pieces under 2 m² are dropped. Unknown heights and the plot's own building(s) stay separate. Delft: 575 → 237 blocks, ~6 corners each, 80 ms. Terraces now read as one volume without party-wall lines.
+  - **Rendering:** all buildings are one merged mesh plus one `LineSegments2`; the ripple rise runs in the vertex shader (per-vertex `aRise` = order, height; `onBeforeCompile` on the basic and line materials). This replaces ~2 objects per building. The ripple spreads over 1 × frameM from the plot (`rise.rippleFrames`), so the far context is up at once.
+- **Checks:** 419 tests (+ merge/simplify 3, limits 3, `r` on the plot route), typecheck, build (SiteModel chunk 38.5 kB). Browser at 1440×928 (Hendrik Casimirstraat 8): the model fills the window with the edge wash; at the furthest zoom-out with a full pan, no plane edge or end of the data shows.
+- **Not checked:** the steepest tilt in the browser (right-drag is not available in the test tool; covered by the limits test only); frame rate at the new size (the preview pane was hidden and throttled during the run); dpr 2 / Mac.
+- **Open:** the back arrow from the model to the rules (asked earlier, not built yet). Cache for the wider demo request is in `data/cache/_adhoc/` (git-ignored); seed it into the demo site cache if the demo must run offline.
+
+## Landing: site model lighting trial (UI side session, 2026-10-17)
+- **Built:** five lighting looks for the site model, switchable live with a small control at the bottom left of the model window (and keys 1–5); the choice is remembered per browser (`localStorage` key `massing.siteLook`). Presets are in `LOOKS` (`model/modelStyle.ts`):
+  1. **Lines**: the flat line drawing as before.
+  2. **Sun** (like reference 1): crisp shadows falling to the right, light grey walls, grey edges. Sun at azimuth 300°, 40° high.
+  3. **Soft** (like reference 2): shadows to the left, soft edges (PCF radius 4), N8AO ambient occlusion, faint edges. Sun 135°, 38°.
+  4. **Low sun**: long shadows to the left, grey edges. Sun 150°, 18°.
+  5. **Shaded**: no edges, stronger face contrast, AO. Sun 135°, 38°.
+- **How:** lit looks use a Lambert material on the merged building mesh plus an ambient light and a shadow-casting sun (4096² map covering the model square). Intensities are × π because three r186's Lambert divides by π, so a preset's `ambient` / `sun` read as fractions of white. Ground shadows come from a shadow-only plane just above the ground layers, so roads and ground keep their exact colours in the sun. The shadow pass uses a depth material with the same rise shader, so the shadows grow with the buildings; people cast shadows too. The plot border and dots moved to the transparent pass, so the shadow plane never covers them.
+- **Finding:** the camera looks north-east, so a sun behind it (south-west) hides every shadow behind its building. Shadows only read when they fall sideways across the view (south-east or north-west). Shadows to the right need a north-west sun: graphic, not a real Dutch sun.
+- **Checks:** 419 tests, typecheck, build (SiteModel chunk 40.9 kB). Browser at 1440×928: all five looks screenshotted on Hendrik Casimirstraat 8.
+- **Open (trial):** with AO on (Soft, Shaded) the effect composer mutes the roads and the plot dots a little; the hand-over from the 2D map was only checked for the Lines look; the switcher is a trial and should go once a look is chosen. No unit tests for the lighting (render-only).
+
+## Landing: performance pass (2026-10-17, unattended run)
+- **Built:** `?perf` probes (`landing/perf.ts`, overlay `PerfHud.tsx`; zero cost without the flag): draw times per phase and per draw section, named heavy calls, main-thread long tasks; `__perf.summary()` in the console. Globe stages got names (`pan`, `blue`, `hold`, `waitData`, `warmDots`, `zoom`, …). Profiled the full flow and fixed the worst items; numbers and the ranked rest in [docs/PERF_REPORT.md](docs/PERF_REPORT.md).
+  - Country/city tile geometry (union/difference/closing of the water) in a module Web Worker: `globe/tileGeometry.ts` (pure, tested), `tileWorker.ts`, `tileJobs.ts` (falls back to the main thread). Country pick: 440 ms freeze in the pan → none.
+  - `DotLayer` caches the city inside test per dot; the city override is staged and warmed with the dots, then committed at the blue (`stageOverride` / `commitOverride` / `dropStagedOverride`). City-view frames 37–72 ms → 7–13 ms; city step long tasks 2 → 0.
+  - Server: `hono/compress` (JSON ~4× smaller). Client: `once()` in `geoApi.ts` shares requests per URL; `fetchScene` shares for 60 s; prefetch of the city boundary (typed name), the plot (picked/highlighted address), and scene + wider plot once the plot has landed. The rules window now opens with its data already loaded.
+  - `.gitignore` keeps the demo address's two plot answers (`data/cache/_geo/plot-aeb2ca8e90d3.json`, `plot-813661c43408.json`) so the demo runs offline on a fresh clone.
+  - `.claude/launch.json`: `massing-api-5` / `massing-web-5` (ports 8811 / 5195), since another session held 8801.
+- **Checks:** 434 tests (+10: dot inside cache, staged override, tile geometry ×4, gzip, `once` ×3), typecheck, build (worker chunk `tileWorker-*.js` 32 kB). Browser (1024×768, dpr 1): full flow with zero long tasks from country to plot; screenshots of the city view, plot and rules unchanged.
+- **Decisions:** no visual or timing change anywhere; prefetches wait for the plot flight to land (parsing during the zoom would cost frames); the scene memo is time-limited (60 s) so the studio still reloads a changed site.
+- **Deviations from SPEC.md:** none.
+- **Open issues:** rules-window prewarm still blocks 52–97 ms (model build; next: worker for `buildModel`/`walkGraph`); `makeLayer` 39 ms on the main thread at the country pick; worker not checked in the production server build (dev only; the build emits it); dpr 2 / Mac not measured; one ~36 ms frame at the city blue.
+- **Next:** see the ranked list in docs/PERF_REPORT.md; first the site-model prewarm worker.
+
+## Landing: site-model prewarm off the main thread (2026-10-17, side session)
+- **Built:** the hidden site-model prewarm while the rules window is open no longer blocks the page (PERF_REPORT "Not fixed" item 1).
+  - `model/modelWork.ts` (pure jobs): `prepareModel` = `buildModel` + the buildings' three.js geometry as typed arrays; `walkJob` = streets lon/lat → local → `walkGraph` (the `blocked` test is rebuilt from polygons in the worker, a function cannot cross). `modelWorker.ts` runs them and hands the geometry buffers over (transfer, no copy). `modelJobs.ts`: `prepareModelAsync` / `walkGraphAsync` / `modelGraph` (fetch streets + walk), same pattern as `globe/tileJobs.ts`: module worker, main-thread fallback when `Worker` is missing or fails, and one shared job per input (StrictMode asked twice).
+  - `model/buildingGeometry.ts`: `shapeOf` / `prism` / `edgePoints` moved out of `SiteModel.tsx` unchanged; `buildingArrays` (the old `buildingGeometry` memo body, in the worker) and `buildingGeometries` (wraps the arrays as `BufferGeometry` + `LineSegmentsGeometry`, no copying, ~1 ms).
+  - `SiteModel.tsx`: the outer component waits for the prepared model, then mounts `ModelView` (the old body). No canvas, no first frame and so no `onReady` before the model is there, so `modelReady` / `model: "waiting"` behave as before. When inputs change later, the last model stays up until the new one is in. People wait for the worker's graph.
+  - `Precompile`: the canvas starts with `frameloop="never"` and calls `gl.compileAsync(scene, camera)` (`KHR_parallel_shader_compile`) in a task of its own; only then does the frame loop start and `FirstFrame` fire. The first frame no longer compiles shaders itself.
+- **Measured** (`?perf`, massing-api-5 + massing-web-5, 1024×768, dev build with StrictMode, Netherlands → Delft → Hendrik Casimirstraat 8 → Go):
+  - Before: rules phase 5 long tasks (108, 108, 91, 106, 78 ms). `buildModel` ×4 (max 61 ms), `buildingGeometry` ×2 (35 ms), `walkGraph` ×2 (22 ms).
+  - After: rules phase **0 long tasks** (and 0 in plot and model:on through the hand-over). Worker wall times: `prepareModel` ~240 ms, `walkGraph` ~27 ms. Main thread: `buildingGeometry` ~1 ms, `compile` 7 ms, `compileAsync` 18–38 ms wall.
+  - Steps on the way: worker only → 2–3 tasks (63–90 ms: canvas mount with `buildingGeometry` ×2, first frame's shader compile 50 ms). Geometry in the worker → 1 (first frame 50–74 ms). + `compileAsync` → 0–1 (51–53 ms: mount + sync compile in one task). Compile in its own task → 0.
+- **Checks:** 441 tests (+7 in `modelJobs.test.ts`: a fake `Worker` runs the real `modelWorker.ts` with structured clones and transfers, and its model, geometry arrays and graph equal the direct calls; error fallback; one job per input; geometry wrapping), typecheck, build (`modelWorker-*.js` 417 kB, 124 kB gzip). Browser: hand-over to the model screenshotted in Lines and Sun, looks as before.
+- **Decisions:** the geometry went to the worker instead of idle-callback slicing (no main-thread cost left to split). Three.js core geometry runs in the worker; nothing there touches WebGL. The `.catch` on `modelGraph` drops a failed street fetch from the cache, so a remount retries as before.
+- **Deviations from SPEC.md:** none.
+- **Open issues:**
+  - The canvas mount itself (R3F + WebGLRenderer + scene objects) is ~45 ms in dev with StrictMode. Under 50 ms in every run measured, but close; production has no double render.
+  - Switching to a lit look in the model (key 2) still costs one ~52 ms task (lit/shadow shaders, 4096² shadow map). It was like that before and happens outside the rules phase.
+  - The worker chunk pulls in zod and proj4 through the `@massing/shared` barrel (`modelData.ts` imports `openRing` / `rdToWgs84` / `wgs84ToRd` for `envelopeRings`). It could be slimmed with a narrower import.
+  - `docs/PERF_REPORT.md` still lists this as "Not fixed" item 1 (left untouched; this session's scope was `model/` + PROGRESS.md).
+  - Production build not measured in the browser.
+- **Next:** PERF_REPORT item 2 (`makeLayer` on the main thread at the country pick), or update the report with the numbers above.
+
+## Landing: rules window restyled to the Figma table (2026-10-19)
+- **Built:** `RulesPanel.tsx` + the rules block of `landing.css` follow Figma "Plot found + rules window" (node 19:2): header "Zoning and limits" with plot chip and address, rows of title · value · status tag · source (160/96/96/128 px), grey sub-rows for street/side/rear, "More limits" row, band with "N fields need input", "Fill with suggested values" and the arrow. Icons in `assets/rules/`.
+- **Decisions:** values are inline text fields (no slider), coverage is typed as a 0–1 ratio; Setbacks row toggles its three sub-rows; "More limits" holds max gutter height and street side and opens by itself while one of them is missing; "Zoning plan ↗" links to the first plan text URL, parking links to the policy; an overridden or placeholder row shows its source with a reset icon; PLACEHOLDER tag (outlined) is not in the design.
+- **Deviations from SPEC.md:** none.
+- **Open issues:** the indicative-only note sits at the end of the scrolling list; plan values can arrive in Dutch ("Wonen"); checked in the browser with real Delft data driven through the store, not through the animated flow.
+- **Next:** compare against the Figma at 1440×928 by eye; decide if the "indicative" note belongs in the band.
+- **Rules window follow-up (2026-10-19):** allowed functions are shown in English (`shared/src/constraints/functions.ts`, `translateFunction`; applied to the plan provider and to extracted values, the quote keeps the Dutch); the list no longer scrolls (13 whole cells, header 95 px + window border, column widths 159/97/96 so row and cell borders land on grid lines; more than 3 functions show as 2 chips + "+N"); the address is two lines and "2628 SJ Delft, NL" never breaks; the "Indicative only" note is gone; gutter height and street side appear only after "+ More limits" is clicked.
+
+## Landing → Directions hand-over (2026-10-20)
+- **Built:** the site-model screen (last landing screen) has a "Directions" button, bottom right, once the model is live. It sets `#studio/directions`; `Root` opens the studio there (`client/src/routes.ts` holds the hash constants), `App` starts on the Directions tab.
+- **Decisions:** `App` only calls `load()` when no scene is in the store, so the address, rules and overrides filled in on the landing carry over instead of being replaced by the default site. Plain `#studio` still opens the Site tab.
+- **Deviations from SPEC.md:** none.
+- **Open issues:** the button is a plain blue label, not yet from the Figma; browser back from the studio returns to the landing at its first step (state is kept in the stores but the globe restarts).
+- **Checks:** 441 tests, build.
+- **Next:** design the button in Figma; decide whether back from Directions should return to the model screen.

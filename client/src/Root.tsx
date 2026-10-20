@@ -1,12 +1,11 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { Landing } from "./landing/Landing";
+import { isStudioHash } from "./routes";
 
 // the studio (three.js, R3F) loads only when it is opened
 const App = lazy(() => import("./App").then((m) => ({ default: m.App })));
 
-const STUDIO_HASH = "#studio";
-
-/** Landing screen by default; the existing studio flow at #studio. */
+/** Landing screen by default; the existing studio flow at #studio, its Directions screen at #studio/directions. */
 export function Root() {
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
@@ -15,7 +14,7 @@ export function Root() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  if (hash === STUDIO_HASH) {
+  if (isStudioHash(hash)) {
     return (
       <Suspense fallback={null}>
         <App />

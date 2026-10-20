@@ -12,6 +12,7 @@ import { useAiStore } from "./state/aiStore";
 import { ASPECTS, fitFrame } from "./present/frame";
 import { buildOverlay } from "./present/labels";
 import { panel } from "./screens/panel";
+import { DIRECTIONS_HASH } from "./routes";
 
 const SCREENS = { site: "Site", constraints: "Constraints", directions: "Directions", present: "Present" } as const;
 type Screen = keyof typeof SCREENS;
@@ -30,7 +31,7 @@ function useWindowSize() {
 }
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>("site");
+  const [screen, setScreen] = useState<Screen>(() => (window.location.hash === DIRECTIONS_HASH ? "directions" : "site"));
   const scene = useSiteStore((s) => s.scene);
   const showEnvelope = useSiteStore((s) => s.showEnvelope);
   const envelope = useEnvelope();
@@ -44,7 +45,10 @@ export function App() {
   const jobColour = useMassingStore((s) => s.options[present.job?.option ?? s.active].colour);
   const win = useWindowSize();
 
-  useEffect(() => void useSiteStore.getState().load(), []);
+  // coming from the landing, the chosen site is already loaded: keep it (and its rules) instead of the default site
+  useEffect(() => {
+    if (!useSiteStore.getState().scene) void useSiteStore.getState().load();
+  }, []);
 
   const presenting = screen === "present";
   const style = useMemo(

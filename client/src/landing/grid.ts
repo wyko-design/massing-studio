@@ -124,8 +124,11 @@ export const LAYOUT: LayoutSpec = {
   },
 };
 
-/** Rows the landing needs: window at its lowest row, plus one free row below it. */
-export const LANDING_MIN_ROWS = LAYOUT.minRow + LAYOUT.windowRows + EDGE_CELLS;
+/** Most address suggestions shown; the list hangs below the field, one grid row each. */
+export const SUGGEST_ROWS = 5;
+
+/** Rows the landing needs: window at its lowest row, plus room for the suggestion list below the field. */
+export const LANDING_MIN_ROWS = LAYOUT.minRow + LAYOUT.windowRows + SUGGEST_ROWS;
 export type LandingLayout = {
   logo: Cells;
   toggle: Cells;
@@ -136,11 +139,37 @@ export type LandingLayout = {
   field: Cells;
   button: Cells;
   hookRow: number;
+  /** The rules window: same size as `window`, one cell to its right. Only meaningful when the layout was made with `paired`. */
+  panel: Cells;
+  panelBand: Cells;
 };
 
-/** Page-cell layout of the landing screen (reference 1440×928 = 45×29 cells → window at x 480, y 160). */
-export function landingLayout(g: Grid, spec: LayoutSpec = LAYOUT): LandingLayout {
-  const col = Math.floor((g.N - spec.windowCols) / 2);
+/** The site model window: the globe window grown to a square of its own height, centred on the page. */
+export function modelWindow(g: Grid, spec: LayoutSpec = LAYOUT): Cells {
+  const side = spec.windowRows;
+  const col = Math.max(0, Math.floor((g.N - side) / 2));
+  const row = Math.max(spec.minRow, Math.floor((g.M - spec.windowRows) / 2));
+  return cells(col, col + side, row, row + side);
+}
+
+/** A box between two others, `t` ∈ [0, 1], on whole pixels. */
+export const lerpBox = (a: BoxStyle, b: BoxStyle, t: number): BoxStyle => ({
+  left: Math.round(a.left + (b.left - a.left) * t),
+  top: Math.round(a.top + (b.top - a.top) * t),
+  width: Math.round(a.width + (b.width - a.width) * t),
+  height: Math.round(a.height + (b.height - a.height) * t),
+});
+
+/** Cells between the globe window and the rules window. */
+export const PANEL_GAP = 1;
+
+/**
+ * Page-cell layout of the landing screen (reference 1440×928 = 45×29 cells → window at x 480, y 160).
+ * `paired`: the rules window is open; the two windows are centred together, so the globe window moves left.
+ */
+export function landingLayout(g: Grid, spec: LayoutSpec = LAYOUT, paired = false): LandingLayout {
+  const total = paired ? 2 * spec.windowCols + PANEL_GAP : spec.windowCols;
+  const col = Math.max(0, Math.floor((g.N - total) / 2));
   const row = Math.max(spec.minRow, Math.floor((g.M - spec.windowRows) / 2));
   const { logo, local } = spec;
   return {
@@ -153,5 +182,7 @@ export function landingLayout(g: Grid, spec: LayoutSpec = LAYOUT): LandingLayout
     field: offsetCells(local.field, col, row),
     button: offsetCells(local.button, col, row),
     hookRow: row + local.hookRow,
+    panel: cells(col + spec.windowCols + PANEL_GAP, col + 2 * spec.windowCols + PANEL_GAP, row, row + spec.windowRows),
+    panelBand: offsetCells(local.inputBand, col + spec.windowCols + PANEL_GAP, row),
   };
 }

@@ -65,6 +65,16 @@ describe("server", () => {
     expect(() => SiteSceneSchema.parse(body)).not.toThrow();
   });
 
+  it("gzips JSON when the browser accepts it", async () => {
+    const app = createApp({ config });
+    const plain = await app.request("/api/scene/sample");
+    const zipped = await app.request("/api/scene/sample", { headers: { "Accept-Encoding": "gzip" } });
+    expect(plain.headers.get("content-encoding")).toBeNull();
+    expect(zipped.headers.get("content-encoding")).toBe("gzip");
+    const raw = new Uint8Array(await zipped.arrayBuffer());
+    expect(raw.length).toBeLessThan((await plain.text()).length);
+  });
+
   it("builds a local-frame scene around the parcel centroid", async () => {
     const dirs: string[] = [];
     const app = createApp({
@@ -103,7 +113,7 @@ describe("server", () => {
     const scene = SiteSceneSchema.parse(await (await app.request("/api/scene")).json());
     expect(scene.zoning?.fixtureId).toBeNull();
     expect(scene.zoning?.constraints.maxHeight).toMatchObject({ value: null, prov: { status: "assumed" } });
-    expect(scene.zoning?.constraints.maxHeight.prov.source).toMatch(/No site fixture for parcel DEL00 K 2/);
+    expect(scene.zoning?.constraints.maxHeight.prov.source).toMatch(/No site fixture and no readable plan data for parcel DEL00 K 2/);
   });
 
   it("caches only the demo address under the site directory", async () => {

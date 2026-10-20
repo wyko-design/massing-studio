@@ -62,6 +62,7 @@ describe("plot view", () => {
     parcel: { id: "p", areaM2: 80, polygons: [[rect(-10, -5, 10, 5)]] },
     frameM: 90,
     buildings: [],
+    ground: { road: [], water: [] },
   };
 
   it("spans frameM metres over the tighter axis, centred on the parcel", () => {

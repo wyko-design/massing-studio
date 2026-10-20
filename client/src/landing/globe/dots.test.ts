@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { buildCountries, type WorldTopology } from "../countries";
 import { buildCountryIndex } from "./countryIndex";
 import { forEachDot, type LatticeDot, type LatticeSpec } from "./lattice";
+import { DotLayer } from "./dots";
+import { globeStyle } from "./globeStyle";
 
 const require = createRequire(import.meta.url);
 const topology = JSON.parse(fs.readFileSync(require.resolve("world-atlas/countries-50m.json"), "utf8")) as WorldTopology;
@@ -106,5 +108,50 @@ describe("lattice", () => {
       expect(ground / spec.baseDeg).toBeGreaterThan(0.9);
       expect(ground / spec.baseDeg).toBeLessThan(1.1);
     }
+  });
+});
+
+describe("dot layer: city inside test", () => {
+  // a 2D context that accepts every call (the test only counts the inside lookups)
+  const ctx = new Proxy({}, { get: () => () => undefined, set: () => true }) as unknown as CanvasRenderingContext2D;
+  const view = { centre: [4.36, 52.0] as [number, number], scale: 20000, cx: 400, cy: 300, clip: { x: 0, y: 0, w: 800, h: 600 } };
+  const nl = index.ids.indexOf("528");
+
+  it("asks the inside test once per dot, not every frame", () => {
+    const layer = new DotLayer(index);
+    for (const _ of layer.warm(view, globeStyle.dots, Infinity)) void _;
+    let calls = 0;
+    const inside = (lon: number) => (calls++, lon > 4.3);
+    layer.draw(ctx, view, globeStyle.dots, nl, { inside });
+    const first = calls;
+    expect(first).toBeGreaterThan(0);
+    layer.draw(ctx, view, globeStyle.dots, nl, { inside });
+    expect(calls).toBe(first);
+    // a new test (the city outline changed) is asked again
+    let again = 0;
+    layer.draw(ctx, view, globeStyle.dots, nl, { inside: () => (again++, true) });
+    expect(again).toBe(first);
+  });
+});
+
+describe("dot layer: staged city override", () => {
+  const ctx = new Proxy({}, { get: () => () => undefined, set: () => true }) as unknown as CanvasRenderingContext2D;
+  const view = { centre: [4.36, 52.0] as [number, number], scale: 20000, cx: 400, cy: 300, clip: { x: 0, y: 0, w: 800, h: 600 } };
+  const nl = index.ids.indexOf("528");
+
+  it("is filled by warm, then switched on without testing the dots again", () => {
+    const layer = new DotLayer(index);
+    let fnCalls = 0;
+    let insideCalls = 0;
+    const inside = (lon: number) => (insideCalls++, lon > 4.3);
+    layer.stageOverride({ s: 51.9, w: 4.2, n: 52.1, e: 4.5 }, (_lon, _lat, c) => (fnCalls++, c));
+    for (const _ of layer.warm(view, globeStyle.dots, Infinity, { selected: nl, inside })) void _;
+    expect(fnCalls).toBeGreaterThan(0);
+    expect(insideCalls).toBeGreaterThan(0);
+    const [f, i] = [fnCalls, insideCalls];
+    expect(layer.commitOverride()).toBe(true);
+    layer.draw(ctx, view, globeStyle.dots, nl, { inside });
+    expect([fnCalls, insideCalls]).toEqual([f, i]);
+    expect(layer.commitOverride()).toBe(false); // nothing staged any more
   });
 });

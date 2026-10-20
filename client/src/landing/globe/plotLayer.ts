@@ -1,4 +1,5 @@
 import type { Position } from "geojson";
+import polygonClipping from "polygon-clipping";
 import type { LonLat, Rect, View } from "./geo";
 
 /** A chosen address with its cadastral parcel and the buildings around it (GET /api/geo/plot). */
@@ -11,8 +12,16 @@ export type PlotData = {
   parcel: { id: string; areaM2: number | null; polygons: [number, number][][][] } | null;
   /** Width in metres of the frame's tighter axis. */
   frameM: number;
-  buildings: { id: string; ring: [number, number][] }[];
+  /** Where the surroundings were fetched around [lon, lat] (the parcel's centre), and the half side (m) of their box. */
+  centre?: LonLat;
+  radiusM?: number;
+  /** `height`: 3DBAG height in metres (older cached answers have none). */
+  buildings: { id: string; ring: [number, number][]; height?: number }[];
+  /** BGT ground surfaces around it: roads (carriageways, merged and simplified) and water. */
+  ground: Record<GroundKind, [number, number][][][]>;
 };
+
+export type GroundKind = "road" | "water";
 
 /** Mean earth radius (m): one radian of arc. At the scales used here the orthographic view is planar to well under a pixel. */
 export const EARTH_R = 6371008.8;
@@ -74,6 +83,42 @@ function insidePolygon(x: number, y: number, rings: Position[][]): boolean {
 }
 
 export const insideParcel = (p: LocalParcel, x: number, y: number) => p.polygons.some((poly) => insidePolygon(x, y, poly));
+
+const ringAreaDeg = (r: Position[]) => {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j]![0]! - r[i]![0]!) * (r[j]![1]! + r[i]![1]!);
+  return Math.abs(a / 2);
+};
+
+/** Share of a footprint that must lie on the parcel for the building to count as standing on it (party-wall noise stays below). */
+const ON_PARCEL = 0.05;
+
+/** The plot without the buildings standing on its parcel: the site is shown empty, ready for a design. */
+export function clearParcel(plot: PlotData): PlotData {
+  const polys = plot.parcel?.polygons;
+  if (!polys?.length) return plot;
+  const parcel = polys as never[];
+  // a large box holds thousands of buildings: only those whose bbox touches the parcel's are clipped
+  const pts = polys.flatMap((p) => p[0]!);
+  const box = { w: Math.min(...pts.map((q) => q[0])), e: Math.max(...pts.map((q) => q[0])), s: Math.min(...pts.map((q) => q[1])), n: Math.max(...pts.map((q) => q[1])) };
+  return {
+    ...plot,
+    buildings: plot.buildings.filter((b) => {
+      let w = Infinity, e = -Infinity, s = Infinity, n = -Infinity;
+      for (const [lon, lat] of b.ring) (w = Math.min(w, lon)), (e = Math.max(e, lon)), (s = Math.min(s, lat)), (n = Math.max(n, lat));
+      if (e < box.w || w > box.e || n < box.s || s > box.n) return true;
+      const area = ringAreaDeg(b.ring);
+      if (!area) return true;
+      try {
+        const cut = polygonClipping.intersection([b.ring] as never, ...parcel) as Position[][][];
+        const shared = cut.reduce((t, p) => t + ringAreaDeg(p[0]!) - p.slice(1).reduce((h, r) => h + ringAreaDeg(r), 0), 0);
+        return shared / area <= ON_PARCEL;
+      } catch {
+        return true; // a broken ring: leave the building rather than guess
+      }
+    }),
+  };
+}
 
 const smoothstep = (t: number) => {
   const x = Math.max(0, Math.min(1, t));

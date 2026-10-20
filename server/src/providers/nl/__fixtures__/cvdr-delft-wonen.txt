@@ -1,0 +1,9 @@
+Algemene tekst.
+Specifiek voor woonfuncties beperken we de parkeernorm daarnaast tot maximaal één parkeerplaats per woning.
+Hier geldt de autoluw-plusregeling en is de autoparkeernorm gelijk aan nul.
+Nulvergunningregeling Een regeling in het gereguleerd gebied van Delft waarmee aan adressen van kleinschalige woonontwikkelingen (maximaal 10 woningen) geen parkeervergunningen worden afgegeven waardoor er geen verplichting is voor het realiseren van autoparkeerplaatsen.
+In de Delftse binnenstad wordt alleen nog vastgelegd hoeveel autoparkeerplaatsen er maximaal mogen komen.
+Bijlage 3. Autoparkeernormen
+Wonen Functie Eenheid Autoluwplusgebied Binnenstad Delft Rest bebouwde kom Delft Buiten gebied Delft Campus TU Delft Schieoevers Noord Bewoners & bezoek Minimum Bewoners Maximum Bezoekers Maximum Bewoners Bezoekers Bewoners Bezoekers Bewoners Bezoekers Bewoners Bezoekers Woning kleiner dan 50 m2 GO Per woning 0 0 0,1 0,1 0,2 0,1 0,3 0,2 0,2 0,1 0 0,1 Woning tussen 50 tot 75 m2 GO Per woning 0 0 0,3 0,1 0,5 0,1 0,6 0,2 0,5 0,1 0,4 0,1 Woning tussen 75 tot 100 m2 GO Per woning 0 0 0,6 0,1 0,7 0,1 0,8 0,2 0,7 0,1 0,7 0,1 Woning tussen 100 tot 125 m2 GO Per woning 0 0 0,7 0,1 0,9 0,1 1,0 0,2 0,9 0,1 0,9 0,1 Woning groter dan 125 m2 GO Per woning 0 0 0,8 0,1 1,0 0,1 1,0 0,2 1,0 0,1 1,0 0,1 Studenten-woning Per ooneenheid 0 0 0 0,1 0,05 0,1 0,1 0,1 0,05 0,1 0 0,1 Zorgwoning Per woning 0 0 0 0,1 0,1 0,1 0,4 0,2 0,1 0,1 0 0,1 
+Opmerkingen De parkeernorm voor de functie wonen is een optelsom.
+Werken Functie Eenheid Autoluw-plusgebied Binnenstad Kantoor Per 100 m2 BVO 0 0 0,5 0,7 0,9 0,7 0,6 5%

@@ -123,6 +123,7 @@
 }
 
 .landing .field {
+  transition: left 600ms cubic-bezier(0.645, 0.045, 0.355, 1), width 600ms cubic-bezier(0.645, 0.045, 0.355, 1);
   background: var(--white);
   border: 1px solid var(--stroke);
 }
@@ -167,7 +168,7 @@
   color: var(--stroke);
 }
 
-/* address suggestions: open upwards over the map, above the label */
+/* address suggestions: hang from the field's bottom line, one grid row per item (the last loses 1 px to the bottom border) */
 .landing .suggest {
   list-style: none;
   padding: 0;
@@ -191,20 +192,61 @@
 
 .landing .go {
   display: flex;
+  transition: left 600ms cubic-bezier(0.645, 0.045, 0.355, 1), background 150ms;
   align-items: center;
   justify-content: center;
   padding: 0;
   border: 0;
   background: var(--stroke);
   cursor: pointer;
-  transition: background 150ms;
 }
 
 .landing .go.ready {
   background: var(--blue);
 }
 
+/* the rules window's arrow: with the label it widens to the left, label and arrow at the two ends */
+.landing .rules-go {
+  transition: left 300ms cubic-bezier(0.645, 0.045, 0.355, 1), width 300ms cubic-bezier(0.645, 0.045, 0.355, 1), background 150ms;
+  overflow: hidden;
+}
+
+.landing .rules-go.ready {
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.landing .go-label {
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--white);
+  white-space: nowrap;
+}
+
 .landing .go:disabled {
+  cursor: default;
+}
+
+.landing .back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: left 600ms cubic-bezier(0.645, 0.045, 0.355, 1), opacity 600ms cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.landing .back.shown {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.landing .back:disabled {
   cursor: default;
 }
 
@@ -253,4 +295,745 @@
   top: 0;
   white-space: pre;
   text-align: left;
+}
+
+/* the label follows the field when the bar widens for the address */
+.landing label.t-label {
+  transition: left 600ms cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .field,
+  .landing .go,
+  .landing .back,
+  .landing label.t-label {
+    transition: none;
+  }
+}
+
+/* ---- rules window (RulesPanel.tsx): right of the globe window, same size, border and white fill ---- */
+/* the whole window (frame, table, band, buttons) is one box that grows from its left edge, a grid line, to the right */
+.landing .rules-grow {
+  animation: rules-grow 600ms cubic-bezier(0.645, 0.045, 0.355, 1) backwards;
+}
+
+@keyframes rules-grow {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* the top container (header), the left column of the table and the bottom band stay out while the window grows and the table
+   shimmers; then they fade in slowly (the cells keep shimmering until their row's turn) */
+.landing .rules-grow .rules-header > *,
+.landing .rules-grow .rules-title > *,
+.landing .rules-grow .rules-note,
+.landing .rules-grow > .rules-fill {
+  transition: opacity 800ms ease-out; /* FADE_MS in RulesPanel.tsx */
+}
+
+.landing .rules-grow.growing .rules-header > *,
+.landing .rules-grow.growing .rules-title > *,
+.landing .rules-grow.growing .rules-note,
+.landing .rules-grow.growing > .rules-fill,
+.landing .rules-grow.growing > .rules-go {
+  opacity: 0;
+}
+
+/* the count line: hidden until the last row has unscrambled, then it fades in */
+.landing .rules-count {
+  opacity: 0;
+  transition: opacity 250ms ease-out;
+}
+
+.landing .rules-count.on {
+  opacity: 1;
+}
+
+/* the top container (header) and the bottom container (band) shimmer with the cells, and the shimmer fades out as their content fades in */
+.landing .rules-header,
+.landing .rules-band {
+  isolation: isolate; /* the shimmer sits behind their content, above their background */
+}
+
+.landing .rules-header {
+  position: relative;
+}
+
+.landing .rules-header::before,
+.landing .rules-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: linear-gradient(100deg, #ececec 35%, #fbfbfb 50%, #ececec 65%);
+  background-size: 300% 100%;
+  animation: rules-shimmer 1.3s linear infinite;
+  opacity: 0;
+  transition: opacity 800ms ease-out; /* FADE_MS */
+}
+
+.landing .rules-grow.growing .rules-header::before,
+.landing .rules-grow.growing .rules-band::before {
+  opacity: 1;
+}
+
+/* the empty table: a cell shimmers until its row's turn */
+.landing .rules-item .rules-cell.shimmer,
+.landing .rules-item.more .rules-cell.shimmer.more-dots {
+  background-image: linear-gradient(100deg, #ececec 35%, #fbfbfb 50%, #ececec 65%);
+  background-size: 300% 100%;
+  background-color: transparent;
+  animation: rules-shimmer 1.3s linear infinite;
+}
+
+@keyframes rules-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* the arrow keeps its own width transition next to the fade */
+.landing .rules-grow > .rules-go {
+  transition: left 300ms cubic-bezier(0.645, 0.045, 0.355, 1), width 300ms cubic-bezier(0.645, 0.045, 0.355, 1), background 150ms, opacity 250ms ease-out;
+}
+
+.landing .rules-grow.growing .rules-header > *,
+.landing .rules-grow.growing .rules-title > *,
+.landing .rules-grow.growing .rules-value > *,
+.landing .rules-grow.growing .rules-status > *,
+.landing .rules-grow.growing .rules-source > *,
+.landing .rules-grow.growing .rules-note,
+.landing .rules-grow.growing > .rules-fill,
+.landing .rules-grow.growing > .rules-go {
+  opacity: 0;
+}
+
+.landing .rules-grow.growing .more-dots {
+  color: transparent;
+}
+
+.landing .rules-top {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* the rules window is the page background, like the design: white only in the value cells */
+.landing .rules-window {
+  background: var(--background);
+}
+
+.landing .rules-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 95px; /* + the window border: the first row line lands on a grid line */
+  padding: 16px 24px;
+}
+
+.landing .rules-heading {
+  flex: 1 0 0;
+  min-width: 1px;
+  margin: 0;
+  font-size: 24px;
+  line-height: 26px;
+  letter-spacing: -0.24px;
+  font-weight: 400;
+  color: var(--black);
+}
+
+/* chip, arrow and address as one block, centred in the header */
+.landing .rules-details {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.landing .rules-chip {
+  margin-left: 32px;
+}
+
+.landing .rules-where {
+  display: flex;
+  align-items: center;
+}
+
+.landing .rules-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.landing .rules-back:disabled {
+  cursor: default;
+}
+
+.landing .rules-chip {
+  padding: 0 4px;
+  background: #d8d8d8;
+  font-size: 10px;
+  line-height: 16px;
+  letter-spacing: -0.1px;
+  color: var(--black);
+  white-space: nowrap;
+}
+
+.landing .rules-address {
+  white-space: nowrap; /* as wide as the text: the block grows to the left, the header keeps its 32 px on the right */
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: var(--blue);
+}
+
+.landing .rules-note {
+  margin: 0;
+  padding: 16px 32px;
+  border-top: 1px solid var(--stroke);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: var(--black);
+}
+
+.landing .rules-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden; /* the rows are whole grid cells and fit the window: no scrolling */
+}
+
+.landing .nowrap {
+  white-space: nowrap;
+}
+
+/* one row: title 160 · value 96 · status 96 · source 128 */
+.landing .rules-item {
+  display: grid;
+  grid-template-columns: 159px 97px 96px 1fr; /* the cell borders land on the grid lines (the window border takes 1 px) */
+  height: 32px;
+  border-top: 1px solid var(--stroke);
+  background: var(--background);
+}
+
+.landing .rules-item.tall {
+  height: 64px;
+}
+
+.landing .rules-item.sub {
+  background: #e5e5e5;
+}
+
+.landing .rules-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.landing .rules-title {
+  gap: 6px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: var(--black);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.landing button.rules-title {
+  cursor: pointer;
+}
+
+/* an added optional limit: the icon turns into a minus while the title is hovered */
+.landing .rules-title .icon-minus {
+  display: none;
+}
+
+.landing .rules-title.removable:hover .icon-idle,
+.landing .rules-title.removable:focus-visible .icon-idle {
+  display: none;
+}
+
+.landing .rules-title.removable:hover .icon-minus,
+.landing .rules-title.removable:focus-visible .icon-minus {
+  display: block;
+}
+
+.landing button.rules-title:hover {
+  color: var(--blue);
+}
+
+.landing .rules-item.sub .rules-title {
+  padding: 0 32px;
+}
+
+.landing .rules-title img {
+  flex: none;
+}
+
+.landing .rules-value:focus-within {
+  outline: 1px solid var(--blue);
+  outline-offset: -1px;
+}
+
+.landing .rules-value {
+  padding: 0;
+  border-left: 1px solid var(--stroke);
+  border-right: 1px solid var(--stroke);
+  background: var(--white);
+}
+
+.landing .rules-item:not(.tall) .rules-value {
+  justify-content: flex-start;
+}
+
+.landing .rules-status {
+  justify-content: center;
+  padding: 0 8px;
+  border-right: 1px solid var(--stroke);
+}
+
+.landing .rules-source {
+  gap: 4px;
+  padding: 0 8px;
+  font-size: 10px;
+  line-height: 16px;
+  letter-spacing: -0.1px;
+  color: var(--black);
+  white-space: nowrap;
+}
+
+.landing .src-label {
+  color: var(--stroke);
+}
+
+.landing .src-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--black);
+  text-decoration: underline dotted;
+  text-decoration-thickness: 13%;
+}
+
+.landing .src-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--blue);
+}
+
+.landing .src-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  color: var(--black);
+  cursor: pointer;
+}
+
+/* the status tag: KNOWN grey, UNKNOWN blue */
+.landing .rules-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+  padding: 0 4px;
+  font-family: "ABC Areal", ui-monospace, Menlo, Consolas, monospace;
+  font-variation-settings: "MONO" 50, "wght" 400;
+  font-size: 10px;
+  line-height: 16px;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+}
+
+/* text that is still scrambling is grey; its colour arrives with the letters */
+.landing .rules-num.scrambling,
+.landing .rules-source .scrambling {
+  color: var(--stroke);
+}
+
+.landing .rules-tag.loading {
+  background: #d8d8d8;
+  color: var(--black);
+}
+
+.landing .rules-tag.known {
+  background: #d8d8d8;
+  color: var(--black);
+}
+
+.landing .rules-tag.unknown {
+  background: var(--blue);
+  color: var(--white);
+}
+
+/* the icon files are drawn in one colour: recolour them to the tag text */
+.landing .rules-tag.known img {
+  filter: brightness(0) invert(0.357);
+}
+
+.landing .rules-tag.unknown img {
+  filter: brightness(0) invert(1);
+}
+
+/* value text: the number and its unit; blue when the plan or the user gave it, grey stand-in otherwise */
+.landing .rules-num {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--blue);
+  cursor: text;
+}
+
+.landing .rules-num.mixed,
+.landing .rules-num.unknown {
+  color: var(--stroke);
+}
+
+.landing .rules-num.bad {
+  color: var(--black);
+  text-decoration: underline wavy;
+}
+
+.landing .rules-num input {
+  field-sizing: content; /* as wide as the text, or the grey range while it is empty */
+  min-width: 1ch;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.landing .rules-num input::placeholder {
+  color: var(--stroke);
+  opacity: 1;
+}
+
+.landing .rules-num .unit.empty {
+  color: var(--stroke);
+}
+
+
+
+/* allowed functions: one outlined chip each, stacked */
+.landing .rules-chips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  gap: 4px;
+  padding: 0 8px;
+  outline: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.landing .rules-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  border: 1px solid var(--blue);
+  font-size: 10px;
+  line-height: 10px;
+  letter-spacing: -0.1px;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.landing .rules-empty {
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
+}
+
+/* the list of uses: opens under the cell, one grid row per use, on the page so that no cell clips it */
+.landing .rules-menu {
+  position: absolute;
+  z-index: 5;
+  width: 192px;
+  max-height: 288px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  border: 1px solid var(--blue);
+  background: var(--white);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stroke) transparent;
+}
+
+.landing .rules-menu li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  border-top: 1px solid var(--stroke);
+  color: var(--black);
+  cursor: pointer;
+}
+
+.landing .rules-menu li:first-child {
+  border-top: 0;
+}
+
+.landing .rules-menu li svg {
+  flex: none;
+  visibility: hidden;
+}
+
+.landing .rules-menu li.on {
+  color: var(--blue);
+}
+
+.landing .rules-menu li.on svg {
+  visibility: visible;
+}
+
+.landing .rules-menu li:hover {
+  background: var(--background);
+}
+
+/* "More limits": the collapsed row is greyed out, its cells are [...] */
+.landing .rules-item.more {
+  background: var(--background);
+}
+
+.landing .rules-item.more:not(:has(.rules-value)) {
+  grid-template-columns: 1fr;
+}
+
+.landing .rules-item.more .rules-title {
+  color: var(--stroke);
+}
+
+.landing .rules-item.more .more-hover,
+.landing .rules-item.more .rules-title:hover .more-idle,
+.landing .rules-item.more .rules-title:focus-visible .more-idle {
+  display: none;
+}
+
+.landing .rules-item.more .rules-title:hover .more-hover,
+.landing .rules-item.more .rules-title:focus-visible .more-hover {
+  display: inline;
+}
+
+.landing .rules-item.more .rules-title:hover {
+  color: var(--blue);
+}
+
+.landing .rules-item .more-dots,
+.landing .rules-item.more .rules-value.more-dots {
+  justify-content: center; /* beats the left alignment of the value cells */
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
+}
+
+.landing .rules-item.more .rules-source.more-dots {
+  border: 0;
+}
+
+.landing .rules-item.more .rules-value.more-dots:not(.shimmer) {
+  background: var(--white);
+}
+
+.landing .rules-fill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 9px;
+  border: 1px solid var(--black);
+  background: var(--background);
+  color: var(--black);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.landing .rules-fill:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--white);
+  color: var(--blue);
+}
+
+.landing .rules-fill:disabled {
+  border-color: var(--stroke);
+  color: var(--stroke);
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .rules-grow {
+    animation: none;
+  }
+
+  .landing .rules-item .rules-cell.shimmer,
+  .landing .rules-item.more .rules-cell.shimmer.more-dots,
+  .landing .rules-header::before,
+  .landing .rules-band::before {
+    animation: none;
+  }
+}
+
+/* plot step: the field is a read-only strip on the page background: "Found:" and the plot in a #D8D8D8 chip */
+.landing .field.found {
+  background: var(--background);
+}
+
+.landing .found-row {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 7px;
+  white-space: pre;
+}
+
+.landing .found-row .chip {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  background: #d8d8d8;
+  color: var(--black);
+}
+
+.landing .found-row .found-label {
+  color: var(--stroke);
+}
+
+/* ---- site model (model/SiteModel.tsx): the 2D map fades out over its 3D copy; the rules window fades out ---- */
+.landing .globe {
+  transition: opacity 300ms linear; /* modelStyle.handOverMs */
+}
+
+.landing .site-model {
+  position: absolute;
+}
+
+.landing .rules-leave {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* the wrapper spans the page; only the rules window itself takes clicks */
+  transition: opacity 300ms cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.landing .rules-leave > * {
+  pointer-events: auto;
+}
+
+.landing .rules-leave.gone,
+.landing .rules-leave.gone > * {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .globe,
+  .landing .rules-leave {
+    transition: none;
+  }
+}
+
+/* the white wash along the model window's inner edges (the 2D views draw it on their canvas) */
+.landing .site-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.landing .site-model.live {
+  cursor: grab;
+}
+
+.landing .site-model.live:active {
+  cursor: grabbing;
+}
+
+/* lighting looks of the site model (trial switcher, bottom left inside the window; keys 1–5) */
+.landing .site-looks {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 4px;
+}
+
+.landing .site-looks button {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--stroke);
+  background: var(--white);
+  color: var(--black);
+  font: inherit;
+  cursor: pointer;
+}
+
+.landing .site-looks button.on {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--white);
+}
+
+/* leaves the landing for the studio's Directions screen (bottom right inside the model window) */
+.landing .site-next {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  color: var(--white);
+  font: inherit;
+  cursor: pointer;
 }

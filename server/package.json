@@ -15,6 +15,7 @@
     "@mapbox/vector-tile": "^3.0.0",
     "hono": "^4.13.13",
     "pbf": "^5.1.2",
+    "polygon-clipping": "^0.15.7",
     "zod": "^4.6.5"
   },
   "devDependencies": {

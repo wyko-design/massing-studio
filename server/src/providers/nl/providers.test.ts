@@ -96,3 +96,15 @@ describe("3DBAG", () => {
     expect(buildings.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("3DBAG tiles", () => {
+  it("keeps a small box as one request and splits a large one into an even grid", async () => {
+    const { bag3dTileUrls, bag3dUrl } = await import("./bag3d");
+    const p = { x: 85000, y: 446000 };
+    expect(bag3dTileUrls(p, 250)).toEqual([bag3dUrl(p, 250)]);
+    const tiles = bag3dTileUrls(p, 1200); // 2400 m across → 4 × 4 tiles of 600 m
+    expect(tiles).toHaveLength(16);
+    expect(tiles[0]).toContain("bbox=83800,444800,84400,445400");
+    expect(tiles[15]).toContain("bbox=85600,446600,86200,447200");
+  });
+});

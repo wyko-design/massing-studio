@@ -20,6 +20,13 @@ export const globeStyle = {
     colour: TOKENS.stroke,
     selectedColour: TOKENS.blue,
   } satisfies DotStyle as DotStyle,
+  /** The plot view (all colours are tokens): roads white with a light outline, water a light grey with a lighter outline. */
+  plot: {
+    roadFill: TOKENS.white,
+    roadLine: TOKENS.gridLine,
+    waterFill: "#EAEAEA", // the stroke grey at 32 % opacity over white
+    waterLine: "#DFDFDF", // the stroke grey at 48 % opacity over white
+  },
   /** The dots pop in (random subset growing to all) over this long after the page loads (ms). */
   introMs: 400,
   /** Other countries in the country view: solid fill (no dots), faded in over these zoom levels. */
@@ -37,7 +44,7 @@ export const globeStyle = {
   /** Islands and lakes smaller than this across on screen get no outline (px). */
   minLoopPx: 6,
   /** Idle spin around the vertical axis (deg/s) and the view on load: Europe readable, tilted north. */
-  spinDegPerSec: 4,
+  spinDegPerSec: 8,
   initialCentre: [10, 30] as LonLat,
   /** Country sequence: the globe pans over the country, it turns blue, then a rapid zoom in. Back: the reverse. */
   panMs: 1500,
@@ -48,6 +55,8 @@ export const globeStyle = {
   /** City sequence: pan to the city, (wait for its boundary), blue switch, hold, rapid zoom in. */
   cityPanMs: 1300,
   cityWaitMs: 15000,
+  /** The longest the plot step waits for the plot data before giving the step back. */
+  plotWaitMs: 60000,
   cityZoomMs: 1400,
   /** Plot sequence: pan to the address, blue switch to the parcel, hold, rapid zoom in (≈ 300× in scale, so a little longer). */
   plotZoomMs: 1800,

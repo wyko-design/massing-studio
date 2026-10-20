@@ -1,11 +1,15 @@
 import type { Constrained, Envelope, Provenance, SiteConstraints } from "../schemas/constraints";
 import { CONSTRAINT_FIELDS, formatValue, getField, setField, type FieldPath } from "./fields";
+import { translateFunctions } from "./functions";
 
 /** User-entered values per field. `null` means the user says "unknown". */
 export type Overrides = Partial<Record<FieldPath, unknown>>;
 
-/** Constraints with every overridden field replaced and its provenance set to `user_override`. */
-export function applyOverrides(c: SiteConstraints, overrides: Overrides): SiteConstraints {
+/**
+ * Constraints with every overridden field replaced and its provenance set to `user_override`.
+ * Paths in `placeholders` were filled with stand-in values, not typed by the user: they get status `assumed` (so the PLACEHOLDER state stays on).
+ */
+export function applyOverrides(c: SiteConstraints, overrides: Overrides, placeholders: readonly FieldPath[] = []): SiteConstraints {
   let out = c;
   for (const field of CONSTRAINT_FIELDS) {
     if (!(field.path in overrides)) continue;
@@ -14,7 +18,9 @@ export function applyOverrides(c: SiteConstraints, overrides: Overrides): SiteCo
     out = setField(out, field.path, {
       value: overrides[field.path] ?? null,
       ...(field.unit ? { unit: field.unit } : {}),
-      prov: { source: `User override (was ${was})`, status: "user_override" },
+      prov: placeholders.includes(field.path)
+        ? { source: `Placeholder value (was ${was})`, status: "assumed" }
+        : { source: `User override (was ${was})`, status: "user_override" },
     });
   }
   return out;
@@ -58,6 +64,10 @@ export const NO_EXTRACTED: Extracted = { fields: {}, notes: [] };
 /** Constraints with the accepted extracted values in place. User overrides are applied on top of this. */
 export function applyExtracted(c: SiteConstraints, extracted: Extracted): SiteConstraints {
   let out = c;
-  for (const [path, field] of Object.entries(extracted.fields) as [FieldPath, Constrained<unknown>][]) out = setField(out, path, field);
+  for (const [path, field] of Object.entries(extracted.fields) as [FieldPath, Constrained<unknown>][]) {
+    // the interpreter quotes the plan's Dutch words; the value is shown in English
+    const value = path === "allowedFunctions" && Array.isArray(field.value) ? { ...field, value: translateFunctions(field.value as string[]) } : field;
+    out = setField(out, path, value);
+  }
   return extracted.notes.length ? { ...out, notes: [...out.notes, ...extracted.notes] } : out;
 }

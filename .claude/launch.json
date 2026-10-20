@@ -4,25 +4,100 @@
     {
       "name": "massing-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173,
       "url": "http://127.0.0.1:5173"
     },
     {
       "name": "massing-dev-alt",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "env": { "PORT": "5174", "SERVER_PORT": "8788" },
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "env": {
+        "PORT": "5174",
+        "SERVER_PORT": "8788"
+      },
       "port": 5174,
       "url": "http://127.0.0.1:5174"
     },
     {
+      "name": "massing-api-4",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "@massing/server"
+      ],
+      "env": {
+        "SERVER_PORT": "8801"
+      },
+      "port": 8801
+    },
+    {
+      "name": "massing-web-4",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "@massing/client"
+      ],
+      "env": {
+        "PORT": "5190",
+        "SERVER_PORT": "8801"
+      },
+      "port": 5190,
+      "url": "http://127.0.0.1:5190"
+    },
+    {
       "name": "massing-dev-3",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "env": { "PORT": "5183", "SERVER_PORT": "8797" },
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "env": {
+        "PORT": "5183",
+        "SERVER_PORT": "8797"
+      },
       "port": 5183,
       "url": "http://127.0.0.1:5183"
+    },
+    {
+      "name": "massing-api-5",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "@massing/server"
+      ],
+      "env": {
+        "SERVER_PORT": "8811"
+      },
+      "port": 8811
+    },
+    {
+      "name": "massing-web-5",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "@massing/client"
+      ],
+      "env": {
+        "PORT": "5195",
+        "SERVER_PORT": "8811"
+      },
+      "port": 5195,
+      "url": "http://127.0.0.1:5195"
     }
   ]
 }

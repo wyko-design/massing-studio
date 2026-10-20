@@ -1,5 +1,5 @@
 import type { Geometry } from "geojson";
-import type { PlotData } from "./globe/plotLayer";
+import { clearParcel, type PlotData } from "./globe/plotLayer";
 import { createMatcher, type CountryEntry, type Matcher } from "./countries/matcher";
 
 /** A city of the GeoNames list (data/cities/<CC>.json, served by /api/geo/cities/<CC>). */
@@ -44,11 +44,34 @@ export type MapDetails = {
   water: [number, number][][];
 };
 
-async function getJson<T>(url: string): Promise<T> {
+const shared = new Map<string, Promise<unknown>>();
+const SHARED_MAX = 32;
+
+/**
+ * One request per key: a later call (a prefetch picked up, a step back and forth) gets the same promise. A failure is
+ * forgotten, so the next call tries again; the oldest answers drop out beyond `SHARED_MAX`.
+ */
+export function once<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = shared.get(key);
+  if (hit) {
+    shared.delete(key);
+    shared.set(key, hit);
+    return hit as Promise<T>;
+  }
+  const p = load();
+  shared.set(key, p);
+  p.catch(() => shared.get(key) === p && shared.delete(key));
+  while (shared.size > SHARED_MAX) shared.delete(shared.keys().next().value!);
+  return p;
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url} failed (${res.status})`);
   return (await res.json()) as T;
 }
+
+const getJson = <T>(url: string) => once(url, () => fetchJson<T>(url));
 
 export const fetchBoundary = (city: CityRow, cc: string) =>
   getJson<CityBoundary>(`/api/geo/boundary?${new URLSearchParams({ name: city.n, cc, lat: String(city.y), lon: String(city.x) })}`);
@@ -80,4 +103,26 @@ export async function fetchAddressSuggestions(q: string, lat: number, lon: numbe
 }
 
 /** The chosen address's point, parcel and surrounding buildings. */
-export const fetchPlot = (id: string) => getJson<PlotData>(`/api/geo/plot?${new URLSearchParams({ id })}`);
+export const fetchPlot = (id: string) => {
+  const url = `/api/geo/plot?${new URLSearchParams({ id })}`;
+  return once(`clear|${url}`, () => fetchJson<PlotData>(url).then(clearParcel));
+};
+
+/** The same plot with its surroundings out to `radiusM` (the site model). */
+export const fetchPlotContext = (id: string, radiusM: number) => {
+  const url = `/api/geo/plot?${new URLSearchParams({ id, r: String(radiusM) })}`;
+  return once(`clear|${url}`, () => fetchJson<PlotData>(url).then(clearParcel));
+};
+
+/** OpenStreetMap streets and paths of a small box: highway class and [lon, lat] points. */
+export const fetchStreets = (b: Bbox) =>
+  getJson<{ h: string; p: [number, number][] }[]>(`/api/geo/streets?${new URLSearchParams({ s: String(b.s), w: String(b.w), n: String(b.n), e: String(b.e) })}`);
+
+/** The address without its trailing place name ("Hendrik Casimirstraat 8, 2628KJ Delft" → "…8, 2628KJ"; without a postcode "…, Delft" is dropped). */
+export function shortAddress(label: string): string {
+  const i = label.lastIndexOf(", ");
+  if (i < 0) return label;
+  const tail = label.slice(i + 2);
+  const postcode = /^\d{4} ?[A-Z]{2}\b/.exec(tail);
+  return postcode ? label.slice(0, i + 2) + postcode[0] : label.slice(0, i);
+}

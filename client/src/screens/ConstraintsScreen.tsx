@@ -8,7 +8,7 @@ import {
   type Constrained,
   type Envelope,
 } from "@massing/shared";
-import { useConstraints, useEnvelope, useSiteStore } from "../state/siteStore";
+import { useConstraints, useEnvelope, useParkingNorm, useSiteStore } from "../state/siteStore";
 import { ExtractRulesPanel } from "./AiPanels";
 import { panel } from "./panel";
 
@@ -115,6 +115,61 @@ function EnvelopeSummary({ envelope }: { envelope: Envelope }) {
   );
 }
 
+const nl = (v: number) => String(v).replace(".", ",");
+
+/** Municipal parking policy: the zone the plot is in (guessed, changeable) and the norm that follows from it and the unit size. */
+function ParkingPanel() {
+  const info = useParkingNorm();
+  const setParkingZone = useSiteStore((s) => s.setParkingZone);
+  if (!info) return null;
+  const { policy, zoneId, chosen, norm, unitM2 } = info;
+  const reg = policy.regulation;
+  const readable = policy.rows.length > 0;
+  return (
+    <div style={{ margin: "8px 0", padding: "6px 8px", border: "1px solid #ddd", lineHeight: 1.5 }}>
+      <b>Parking policy · {policy.municipality}</b>{" "}
+      <a href={reg.url} target="_blank" rel="noreferrer">
+        {reg.title}
+      </a>
+      {reg.date ? <span style={{ opacity: 0.6 }}> ({reg.date})</span> : null}
+      {!readable && (
+        <div style={{ opacity: 0.8 }}>
+          The norm table of this policy could not be read automatically. "Extract from the plan text" reads the policy text as well; or set the parking norm by hand below.
+        </div>
+      )}
+      {readable && (
+        <>
+          <div>
+            Zone:{" "}
+            <select value={chosen ? zoneId ?? "" : ""} onChange={(e) => setParkingZone(e.target.value || null)} aria-label="Parking zone" style={{ fontFamily: "inherit", fontSize: 11 }}>
+              <option value="">{policy.suggestedZone ? `Guess: ${policy.zones.find((z) => z.id === policy.suggestedZone!.id)?.label ?? policy.suggestedZone.id}` : "Choose a zone"}</option>
+              {policy.zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.label}
+                </option>
+              ))}
+            </select>{" "}
+            <span style={{ opacity: 0.7 }}>{chosen ? "chosen by you" : policy.suggestedZone ? `guess. ${policy.suggestedZone.reason} The zone map is not published as data; check it in the policy.` : ""}</span>
+          </div>
+          {norm ? (
+            <div>
+              Norm for a <b>{Math.round(unitM2)} m²</b> dwelling: {nl(norm.residents)} residents + {nl(norm.visitors)} visitors = <b>{nl(norm.value)} spaces per dwelling</b>
+              {norm.zone.basis === "maximum" ? " (a maximum; fewer is allowed)" : ""} <span style={{ opacity: 0.7 }}>({norm.row.label})</span>
+            </div>
+          ) : (
+            <div style={{ opacity: 0.8 }}>No norm for this zone and size.</div>
+          )}
+          {policy.notes.map((n) => (
+            <div key={n} style={{ opacity: 0.75 }}>
+              · <i>“{n}”</i>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Screen 2: rules with provenance, status badges and overrides; envelope ghost in the viewer (SPEC §9). */
 export function ConstraintsScreen() {
   const scene = useSiteStore((s) => s.scene);
@@ -147,11 +202,14 @@ export function ConstraintsScreen() {
         </label>
       </div>
       <div style={{ opacity: 0.7, marginBottom: 6 }}>
-        {fixtureId ? `Site fixture: data/sites/${fixtureId}.json` : "No site fixture for this parcel: every rule is unknown."}{" "}
+        {fixtureId
+          ? (scene.zoning?.label ?? `Site fixture: data/sites/${fixtureId}.json`)
+          : "No site fixture or readable plan data for this parcel: every rule is unknown."}{" "}
         Indicative only, not a permit check.
       </div>
 
       <ExtractRulesPanel />
+      <ParkingPanel />
 
       <table style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>

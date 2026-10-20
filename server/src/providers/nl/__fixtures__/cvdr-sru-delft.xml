@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/"
+                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                        xsi:schemaLocation="http://www.loc.gov/zing/srw/ http://www.loc.gov/standards/sru/xmlFiles/srw-types.xsd">
+   <version>1.2</version>
+   <numberOfRecords>3</numberOfRecords>
+   <records>
+      <record>
+         <recordSchema>http://standaarden.overheid.nl/sru/</recordSchema>
+         <recordPacking>xml</recordPacking>
+         <recordData>
+            <gzd xmlns="http://standaarden.overheid.nl/sru"
+                 xmlns:dcterms="http://purl.org/dc/terms/"
+                 xmlns:overheid="http://standaarden.overheid.nl/owms/terms/"
+                 xsi:schemaLocation="http://standaarden.overheid.nl/sru https://standaarden.overheid.nl/sru/gzd.xsd">
+               <originalData>
+                  <overheidrg:meta xmlns:overheidrg="http://standaarden.overheid.nl/cvdr/terms/">
+                     <owmskern>
+                        <dcterms:identifier>CVDR714401_1</dcterms:identifier>
+                        <dcterms:title>Beleidsregels Parkeernormen Delft 2023</dcterms:title>
+                        <dcterms:language>nl</dcterms:language>
+                        <dcterms:type scheme="overheid:Informatietype">regeling</dcterms:type>
+                        <dcterms:type scheme="overheidop:Rubriek">beleidsregel</dcterms:type>
+                        <dcterms:creator scheme="overheid:Gemeente">Delft</dcterms:creator>
+                        <dcterms:modified>2024-01-26</dcterms:modified>
+                     </owmskern>
+                     <owmsmantel>
+                        <dcterms:isFormatOf resourceIdentifier="https://zoek.officielebekendmakingen.nl/gmb-2024-41119">gmb-2024-41119</dcterms:isFormatOf>
+                        <dcterms:alternative>Beleidsregels Parkeernormen Delft 2023</dcterms:alternative>
+                        <dcterms:source resourceIdentifier="">Onbekend</dcterms:source>
+                        <overheid:isRatifiedBy scheme="overheid:BestuursorgaanGemeente">college van burgemeester en wethouders</overheid:isRatifiedBy>
+                        <dcterms:subject>ruimtelijke ordening, verkeer en vervoer</dcterms:subject>
+                        <dcterms:issued>2023-12-05</dcterms:issued>
+                     </owmsmantel>
+                     <cvdripm>
+                        <overheidrg:inwerkingtredingDatum>2024-01-26</overheidrg:inwerkingtredingDatum>
+                        <overheidrg:uitwerkingtredingDatum/>
+                        <overheidrg:betreft>nieuwe regeling</overheidrg:betreft>
+                        <overheidrg:kenmerk>5685774</overheidrg:kenmerk>
+                        <overheidrg:onderwerp/>
+                        <overheidrg:redactioneleToevoeging>&lt;al&gt;Deze regeling vervangt de Nota Parkeernormen Delft 2018.&lt;/al&gt;&lt;al&gt;Deze regeling vervangt de Beleidsregels parkeren in het gebied Schieoevers Noord.&lt;/al&gt;&lt;al&gt;Deze regeling vervangt de Beleidsregels parkeren TU Campus TU Delft 2018.&lt;/al&gt;&lt;al&gt;Deze regeling vervangt de Beleidsregels parkeervisie spoorzonegebied.&lt;/al&gt;&lt;al&gt;Deze regeling vervangt de uitgangspunten en randvoorwaarden voor deelmobiliteit bij bouwontwikkelingen Gemeente Delft.&lt;/al&gt;</overheidrg:redactioneleToevoeging>
+                        <overheidrg:alternatieveIdentifier/>
+                        <overheidrg:opvolgerVan/>
+                        <overheidrg:externeBijlage>Bijlage 7 Mobiliteitsvisie </overheidrg:externeBijlage>
+                        <overheidrg:indeling>beleidsregel</overheidrg:indeling>
+                        <overheidrg:omgevingswet>nee</overheidrg:omgevingswet>
+                     </cvdripm>
+                  </overheidrg:meta>
+               </originalData>
+               <enrichedData>
+                  <organisatietype>Gemeente</organisatietype>
+                  <publicatieurl_xml>https://repository.officiele-overheidspublicaties.nl/cvdr/CVDR714401/1/xml/CVDR714401_1.xml</publicatieurl_xml>
+                  <preferred_url>https://lokaleregelgeving.overheid.nl/CVDR714401/1</preferred_url>
+                  <preferred_work_url>https://lokaleregelgeving.overheid.nl/CVDR714401</preferred_work_url>
+               </enrichedData>
+            </gzd>
+         </recordData>
+         <recordPosition>1</recordPosition>
+      </record>
+      <record>
+         <recordSchema>http://standaarden.overheid.nl/sru/</recordSchema>
+         <recordPacking>xml</recordPacking>
+         <recordData>
+            <gzd xmlns="http://standaarden.overheid.nl/sru"
+                 xmlns:dcterms="http://purl.org/dc/terms/"
+                 xmlns:overheid="http://standaarden.overheid.nl/owms/terms/"
+                 xsi:schemaLocation="http://standaarden.overheid.nl/sru https://standaarden.overheid.nl/sru/gzd.xsd">
+               <originalData>
+                  <overheidrg:meta xmlns:overheidrg="http://standaarden.overheid.nl/cvdr/terms/">
+                     <owmskern>
+                        <dcterms:identifier>CVDR661590_1</dcterms:identifier>
+                        <dcterms:title>Nota Parkeernormen 2018 – update 2021 Auto- en fietsparkeren bij bouwontwikkelingen</dcterms:title>
+                        <dcterms:language>nl</dcterms:language>
+                        <dcterms:type scheme="overheid:Informatietype">regeling</dcterms:type>
+                        <dcterms:creator scheme="overheid:Gemeente">Delft</dcterms:creator>
+                        <dcterms:modified>2021-08-27</dcterms:modified>
+                     </owmskern>
+                     <owmsmantel>
+                        <dcterms:isFormatOf resourceIdentifier="https://zoek.officielebekendmakingen.nl/gmb-2021-290802">gmb-2021-290802</dcterms:isFormatOf>
+                        <dcterms:alternative>Nota Parkeernormen 2018 – update 2021</dcterms:alternative>
+                        <dcterms:source resourceIdentifier="">Onbekend</dcterms:source>
+                        <overheid:isRatifiedBy scheme="overheid:BestuursorgaanGemeente">college van burgemeester en wethouders</overheid:isRatifiedBy>
+                        <dcterms:subject>ruimtelijke ordening, verkeer en vervoer</dcterms:subject>
+                        <dcterms:issued>2021-07-13</dcterms:issued>
+                     </owmsmantel>
+                     <cvdripm>
+                        <overheidrg:inwerkingtredingDatum>2021-08-27</overheidrg:inwerkingtredingDatum>
+                        <overheidrg:uitwerkingtredingDatum>2024-01-26</overheidrg:uitwerkingtredingDatum>
+                        <overheidrg:betreft>nieuwe regeling </overheidrg:betreft>
+                        <overheidrg:kenmerk>4597950</overheidrg:kenmerk>
+                        <overheidrg:onderwerp/>
+                        <overheidrg:redactioneleToevoeging/>
+                        <overheidrg:alternatieveIdentifier/>
+                        <overheidrg:opvolgerVan/>
+                        <overheidrg:intrekkingRegeling>2024-01-26</overheidrg:intrekkingRegeling>
+                        <overheidrg:indeling>overig</overheidrg:indeling>
+                        <overheidrg:omgevingswet>nee</overheidrg:omgevingswet>
+                     </cvdripm>
+                  </overheidrg:meta>
+               </originalData>
+               <enrichedData>
+                  <organisatietype>Gemeente</organisatietype>
+                  <publicatieurl_xml>https://repository.officiele-overheidspublicaties.nl/cvdr/CVDR661590/1/xml/CVDR661590_1.xml</publicatieurl_xml>
+                  <preferred_url>https://lokaleregelgeving.overheid.nl/CVDR661590/1</preferred_url>
+                  <preferred_work_url>https://lokaleregelgeving.overheid.nl/CVDR661590</preferred_work_url>
+               </enrichedData>
+            </gzd>
+         </recordData>
+         <recordPosition>2</recordPosition>
+      </record>
+      <record>
+         <recordSchema>http://standaarden.overheid.nl/sru/</recordSchema>
+         <recordPacking>xml</recordPacking>
+         <recordData>
+            <gzd xmlns="http://standaarden.overheid.nl/sru"
+                 xmlns:dcterms="http://purl.org/dc/terms/"
+                 xmlns:overheid="http://standaarden.overheid.nl/owms/terms/"
+                 xsi:schemaLocation="http://standaarden.overheid.nl/sru https://standaarden.overheid.nl/sru/gzd.xsd">
+               <originalData>
+                  <overheidrg:meta xmlns:overheidrg="http://standaarden.overheid.nl/cvdr/terms/">
+                     <owmskern>
+                        <dcterms:identifier>CVDR610045_1</dcterms:identifier>
+                        <dcterms:title>Besluit van het college van burgemeester en wethouders van de gemeente Delft houdende regels omtrent parkerenormen Nota Parkeernormen 2018</dcterms:title>
+                        <dcterms:language>nl</dcterms:language>
+                        <dcterms:type scheme="overheid:Informatietype">regeling</dcterms:type>
+                        <dcterms:creator scheme="overheid:Gemeente">Delft</dcterms:creator>
+                        <dcterms:modified>2018-05-22</dcterms:modified>
+                     </owmskern>
+                     <owmsmantel>
+                        <dcterms:isFormatOf resourceIdentifier="https://zoek.officielebekendmakingen.nl/gmb-2018-101600">gmb-2018-101600</dcterms:isFormatOf>
+                        <dcterms:alternative>Nota Parkeernormen 2018</dcterms:alternative>
+                        <dcterms:source resourceIdentifier="">Onbekend</dcterms:source>
+                        <overheid:isRatifiedBy scheme="overheid:BestuursorgaanGemeente">college van burgemeester en wethouders</overheid:isRatifiedBy>
+                        <dcterms:subject>ruimtelijke ordening, verkeer en vervoer</dcterms:subject>
+                        <dcterms:issued>2018-04-24</dcterms:issued>
+                     </owmsmantel>
+                     <cvdripm>
+                        <overheidrg:inwerkingtredingDatum>2018-05-22</overheidrg:inwerkingtredingDatum>
+                        <overheidrg:uitwerkingtredingDatum>2021-08-27</overheidrg:uitwerkingtredingDatum>
+                        <overheidrg:betreft>nieuwe regeling</overheidrg:betreft>
+                        <overheidrg:kenmerk>Onbekend.</overheidrg:kenmerk>
+                        <overheidrg:onderwerp/>
+                        <overheidrg:redactioneleToevoeging/>
+                        <overheidrg:alternatieveIdentifier/>
+                        <overheidrg:opvolgerVan/>
+                        <overheidrg:intrekkingRegeling>2021-08-27</overheidrg:intrekkingRegeling>
+                        <overheidrg:indeling>overig</overheidrg:indeling>
+                        <overheidrg:omgevingswet>nee</overheidrg:omgevingswet>
+                     </cvdripm>
+                  </overheidrg:meta>
+               </originalData>
+               <enrichedData>
+                  <organisatietype>Gemeente</organisatietype>
+                  <publicatieurl_xml>https://repository.officiele-overheidspublicaties.nl/cvdr/CVDR610045/1/xml/CVDR610045_1.xml</publicatieurl_xml>
+                  <preferred_url>https://lokaleregelgeving.overheid.nl/CVDR610045/1</preferred_url>
+                  <preferred_work_url>https://lokaleregelgeving.overheid.nl/CVDR610045</preferred_work_url>
+               </enrichedData>
+            </gzd>
+         </recordData>
+         <recordPosition>3</recordPosition>
+      </record>
+   </records>
+</searchRetrieveResponse>
+

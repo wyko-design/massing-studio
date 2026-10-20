@@ -14,6 +14,15 @@ const m2 = (a: number) => `${Math.round(a)} m²`;
 
 const mpArea = (mp: MultiPolygon) => mp.reduce((s, p) => s + polygonWithHolesArea(p), 0);
 
+/** A clipping operation, or null when polygon-clipping throws on the input (the caller notes it and falls back). */
+function tryClip(op: () => MultiPolygon): MultiPolygon | null {
+  try {
+    return op();
+  } catch {
+    return null;
+  }
+}
+
 /** Largest part of a clip result; notes when parts were dropped. */
 function largestPart(mp: MultiPolygon, notes: string[]): Envelope["footprint"] {
   const sorted = [...mp].sort((a, b) => polygonWithHolesArea(b) - polygonWithHolesArea(a));
@@ -46,8 +55,10 @@ export function resolveEnvelope(parcelRing: Ring, c: SiteConstraints): Envelope 
   // 1. bouwvlak
   const bouwvlak = c.bouwvlak?.value;
   if (c.bouwvlak && bouwvlak && bouwvlak.coordinates.length) {
-    const clipped = polygonClipping.intersection(bouwvlak.coordinates as Pair[][], parcelGeom);
-    if (!clipped.length) {
+    const clipped = tryClip(() => polygonClipping.intersection(bouwvlak.coordinates as Pair[][], parcelGeom));
+    if (clipped === null) {
+      notes.push("The bouwvlak could not be clipped to the parcel (geometry error) and is ignored.");
+    } else if (!clipped.length) {
       notes.push("The bouwvlak does not overlap the parcel and is ignored.");
     } else {
       const outside = polygonWithHolesArea(bouwvlak.coordinates) - mpArea(clipped);
@@ -70,12 +81,15 @@ export function resolveEnvelope(parcelRing: Ring, c: SiteConstraints): Envelope 
     const roles: EdgeRole[] = allEqual ? parcel.map(() => "street") : edgeRoles(parcel, streetSide!.value!);
     const inputs = allEqual ? [street, side, rear] : [street, side, rear, streetSide!];
     const prov = combinedProv("Setbacks", inputs);
-    const result = insetPerEdge(parcel, roles.map((r) => d[r]));
-    if (!result.length) {
+    const result = tryClip(() => insetPerEdge(parcel, roles.map((r) => d[r])));
+    if (result === null) {
+      notes.push("The setbacks could not be applied to this parcel's outline (geometry error), so the parcel itself is used.");
+    } else if (!result.length) {
       notes.push("The setbacks leave no buildable area.");
       return { footprint: { type: "Polygon", coordinates: [] }, maxHeight, source: "setbacks", prov, notes };
+    } else {
+      return { footprint: largestPart(result, notes), maxHeight, source: "setbacks", prov, notes };
     }
-    return { footprint: largestPart(result, notes), maxHeight, source: "setbacks", prov, notes };
   }
 
   // 3. parcel

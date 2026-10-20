@@ -1,37 +1,52 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import arrowUrl from "./assets/arrow.svg";
-import { boxStyle, type Grid, type LandingLayout } from "./grid";
+import { SUGGEST_ROWS, boxStyle, type Grid, type LandingLayout } from "./grid";
 import { useLandingStore } from "./landingStore";
 import { ShuffleText, useShuffledString, type TextPart } from "./ShuffleText";
-import { fetchAddressSuggestions, loadCities, type AddressSuggestion, type Cities } from "./geoApi";
+import { fetchAddressSuggestions, fetchBoundary, fetchPlot, loadCities, shortAddress, type AddressSuggestion, type Cities } from "./geoApi";
+import type { PlotData } from "./globe/plotLayer";
 import { loadWorld, type World } from "./world";
 
 /** Gap between the label's 12 px line box and the field's top border. */
 const LABEL_GAP = 4;
 const LABEL_LINE = 12;
 
-/** Rows in the suggestion list above the field, and the pause after the last key before asking the server. */
-const LIST_ROWS = 6;
-const ROW_H = 24;
+/** The pause after the last key before asking the server. */
 const SUGGEST_DELAY_MS = 120;
+
+/** The plot field's text: parcel number and area (read-only). Empty until the parcel has arrived. */
+export function plotText(plot: PlotData | null): string {
+  if (!plot) return "";
+  if (!plot.parcel) return "Plot # unknown";
+  const number = plot.parcel.id.split(" ").pop() || "unknown";
+  const area = plot.parcel.areaM2;
+  return `Plot #${number} · ${area === null ? "area unknown" : `${Math.round(area).toLocaleString("en-US")} m²`}`;
+}
 
 /** Label, field (with ghost completion) and arrow button of the input band: country, city, then address step. */
 export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayout }) {
   const step = useLandingStore((s) => s.step);
   const phase = useLandingStore((s) => s.phase);
   const resolving = useLandingStore((s) => s.resolving);
+  const widen = useLandingStore((s) => s.widen);
   const country = useLandingStore((s) => s.country);
   const city = useLandingStore((s) => s.city);
   const selectCountry = useLandingStore((s) => s.selectCountry);
   const selectCity = useLandingStore((s) => s.selectCity);
   const address = useLandingStore((s) => s.address);
   const selectAddress = useLandingStore((s) => s.selectAddress);
+  const back = useLandingStore((s) => s.back);
+  const plot = useLandingStore((s) => s.plot);
+  const openPanel = useLandingStore((s) => s.openPanel);
+  const panelOpen = useLandingStore((s) => s.panelOpen);
   const [value, setValue] = useState("");
   const [noMatch, setNoMatch] = useState<string | null>(null);
   const [world, setWorld] = useState<World | null>(null);
   const [cities, setCities] = useState<Cities | null>(null);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [active, setActive] = useState(-1);
+  // the suggestion put into the field by picking it; it only counts while the field still shows its text
+  const [chosen, setChosen] = useState<AddressSuggestion | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,6 +87,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
     setNoMatch(null);
     setSuggestions([]);
     setActive(-1);
+    setChosen(null);
   }, [step]);
 
   // address suggestions: asked for after a short pause in typing, inside the municipality of the chosen city; an answer to an
@@ -79,7 +95,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
   const cityLat = city?.lat;
   const cityLon = city?.lon;
   useEffect(() => {
-    if (!addressStep || !enabled || value.trim().length < 2 || cityLat === undefined || cityLon === undefined) {
+    if (!addressStep || !enabled || value.trim().length < 2 || cityLat === undefined || cityLon === undefined || (chosen && value === shortAddress(chosen.label))) {
       setSuggestions([]);
       return;
     }
@@ -87,7 +103,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
     const timer = setTimeout(() => {
       fetchAddressSuggestions(value.trim(), cityLat, cityLon, ctl.signal).then(
         (items) => {
-          setSuggestions(items.slice(0, LIST_ROWS));
+          setSuggestions(items.slice(0, SUGGEST_ROWS));
           setActive(-1);
         },
         () => undefined,
@@ -97,7 +113,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
       clearTimeout(timer);
       ctl.abort();
     };
-  }, [addressStep, enabled, value, cityLat, cityLon]);
+  }, [addressStep, enabled, value, cityLat, cityLon, chosen]);
   useEffect(() => {
     if (enabled) input.current?.focus();
   }, [enabled]);
@@ -105,12 +121,31 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
   const matcher = countryStep ? world?.matcher : cityStep ? cities?.matcher : undefined;
   const suggestion = enabled && matcher ? matcher.suggest(value) : null;
   // address step: the highlighted (else the first) suggestion; its text completes what is typed, else it shows as "→ name"
-  const picked = addressStep && enabled ? (suggestions[active] ?? suggestions[0] ?? null) : null;
-  const completes = !!picked && value.length > 0 && picked.label.toLowerCase().startsWith(value.toLowerCase());
+  const locked = addressStep && !!chosen && value === shortAddress(chosen.label);
+  const picked = addressStep && enabled && !locked ? (suggestions[active] ?? suggestions[0] ?? null) : null;
+  // the likely next step is asked for ahead (geoApi shares the request with the globe's own): the boundary of the city the
+  // typed name points at, the plot of a picked or highlighted address; both after a short pause, so typing does not fire requests
+  const likelyCity = cityStep && enabled && cities ? (cities.matcher.match(value)?.entry ?? suggestion?.entry ?? null) : null;
+  const cityRow = likelyCity ? cities?.rows[Number(likelyCity.id)] : undefined;
+  useEffect(() => {
+    if (!cityRow || !cc) return;
+    const id = setTimeout(() => void fetchBoundary(cityRow, cc).catch(() => undefined), 300);
+    return () => clearTimeout(id);
+  }, [cityRow, cc]);
+  const plotAhead = addressStep && enabled ? (locked ? chosen : (suggestions[active] ?? null)) : null;
+  const plotAheadId = plotAhead?.id ?? null;
+  useEffect(() => {
+    if (!plotAheadId) return;
+    const id = setTimeout(() => void fetchPlot(plotAheadId).catch(() => undefined), 300);
+    return () => clearTimeout(id);
+  }, [plotAheadId]);
+
+  const pickedText = picked ? shortAddress(picked.label) : "";
+  const completes = !!picked && value.length > 0 && pickedText.toLowerCase().startsWith(value.toLowerCase());
   const ghost = picked
     ? completes
-      ? picked.label.slice(value.length)
-      : `  → ${picked.label}`
+      ? pickedText.slice(value.length)
+      : `  → ${pickedText}`
     : suggestion
       ? suggestion.kind === "complete"
         ? suggestion.rest
@@ -118,18 +153,34 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
       : "";
 
   // the arrow stays grey until the text is something the field can take (the same test Enter uses)
-  const acceptable = !!(enabled && value.trim() && (addressStep ? picked : matcher && (matcher.match(value) || suggestion)));
+  const plotStep = step === "plot";
+  const acceptable = plotStep || !!(enabled && value.trim() && (addressStep ? locked || picked : matcher && (matcher.match(value) || suggestion)));
+
+  /** Puts a suggestion into the field without proceeding. */
+  const pickInto = (a: AddressSuggestion) => {
+    setChosen(a);
+    setValue(shortAddress(a.label));
+    setSuggestions([]);
+    setActive(-1);
+    setNoMatch(null);
+    input.current?.focus();
+  };
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
+    // plot step: the arrow opens the rules window right away, whether or not the parcel has arrived yet
+    if (plotStep) return openPanel();
     if (!enabled || !value.trim()) return;
     if (addressStep) {
-      if (!picked) {
+      // a highlighted suggestion is picked into the field first; the next Enter (or the arrow) proceeds
+      if (!locked && active >= 0 && suggestions[active]) return pickInto(suggestions[active]!);
+      const target = locked ? chosen : picked;
+      if (!target) {
         setNoMatch(value.trim());
         input.current?.focus();
         return;
       }
-      selectAddress({ id: picked.id, label: picked.label, lon: picked.lon, lat: picked.lat });
+      selectAddress({ id: target.id, label: target.label, lon: target.lon, lat: target.lat });
       return;
     }
     const m = countryStep ? (world ?? (await loadWorld())).matcher : cities?.matcher;
@@ -163,8 +214,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
       }
       if (picked && (e.key === "Tab" || (e.key === "ArrowRight" && atEnd))) {
         e.preventDefault();
-        setValue(picked.label);
-        setNoMatch(null);
+        pickInto(picked);
         return;
       }
     }
@@ -178,7 +228,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
   // the label's text, in parts so that the accent colour survives the shuffle effect
   const labelParts: TextPart[] =
     step === "plot" && address
-      ? [{ text: "Plot at " }, { text: address.label, className: "accent" }]
+      ? [{ text: [shortAddress(address.label), city?.name, city?.cc].filter(Boolean).join(", "), className: "accent" }]
       : step === "address" && city && !addressSupported
         ? [{ text: "Plots work in the " }, { text: "Netherlands only", className: "accent" }, { text: " for now" }]
         : step === "address" && city && noMatch === null
@@ -191,12 +241,20 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
   // while the camera flies the label and the placeholder keep scrambling; they become readable once it has fully zoomed in
   // (the last 0.4 s of the zoom already resolve it, so that it is readable the moment the camera stops)
   const flying = (phase === "toCountry" || phase === "toCity" || phase === "toPlot") && !resolving;
-  const placeholder = useShuffledString(countryStep ? "[Country]" : cityStep ? "[City]" : "[Address]", true, flying);
+  const placeholder = useShuffledString(countryStep ? "[Country]" : cityStep ? "[City]" : plotStep ? "[Plot]" : "[Address]", true, flying);
 
-  const field = boxStyle(grid, layout.field);
-  const listBox = boxStyle(grid, { ...layout.field, c0: layout.field.c0 - 1, c1: layout.button.c1 + 1 });
-  const listH = suggestions.length * ROW_H + 2;
-  const button = boxStyle(grid, layout.button);
+  // the bar is two cells wider for the address (it starts to grow just before the final pass of the text animation, so the label resolves in the widened bar): one cell more on each side, the button moves out
+  const wide = step === "plot" || (step === "address" && (phase === "city" || phase === "backToCity" || widen || resolving));
+  const f = wide ? { ...layout.field, c0: layout.field.c0 - 1, c1: layout.field.c1 + 1 } : layout.field;
+  const field = boxStyle(grid, f);
+  // the list hangs from the field's bottom line, as wide as the field, one grid row per suggestion
+  const listBox = boxStyle(grid, { c0: f.c0, c1: f.c1, r0: f.r1, r1: f.r1 + suggestions.length });
+  const button = boxStyle(grid, wide ? { ...layout.button, c0: layout.button.c0 + 1, c1: layout.button.c1 + 1 } : layout.button);
+  // the back arrow sits one cell left of the field and moves with it; it fades in with the bar's expansion
+  // (once the camera has landed, or at the widen / resolve cues just before)
+  const backShown = !countryStep && (widen || resolving || (phase !== "toCountry" && phase !== "toCity" && phase !== "toPlot"));
+  const backCanClick = phase === "country" || phase === "city" || phase === "plot";
+  const backBox = boxStyle(grid, { ...layout.button, c0: f.c0 - 1, c1: f.c0 });
   const labelStyle: CSSProperties = {
     left: field.left,
     top: field.top - LABEL_GAP - LABEL_LINE,
@@ -204,19 +262,36 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
     whiteSpace: "pre",
   };
 
+  // the rules window is open: the whole bottom section of the globe window is gone, the map has the full height
+  if (panelOpen) return null;
+
   return (
     <form onSubmit={submit} style={{ display: "contents" }}>
       <label className="box t-semimono t-label" htmlFor="landing-input" style={labelStyle} aria-live="polite">
         <ShuffleText parts={labelParts} scrambling={flying} />
       </label>
-      <div className="box field" style={field}>
+      <div className={`box field${plotStep ? " found" : ""}`} style={field}>
+        {plotStep ? (
+          <div className="found-row t-semimono t-input">
+            <span className="found-label">
+              <ShuffleText parts={[{ text: "Found:" }]} scrambling={flying} />
+            </span>
+            {/* the plot chip comes in (shuffling) once "Found:" is legible */}
+            {plot && !flying && (
+              <span className="chip">
+                <ShuffleText parts={[{ text: plotText(plot) }]} />
+              </span>
+            )}
+          </div>
+        ) : (
         <input
           id="landing-input"
           ref={input}
           className="t-semimono t-input"
-          value={value}
+          value={plotStep ? plotText(plot) : value}
+          readOnly={plotStep}
           placeholder={placeholder}
-          disabled={!enabled}
+          disabled={!enabled && !plotStep}
           autoComplete="off"
           spellCheck={false}
           autoFocus
@@ -228,6 +303,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
           }}
           onKeyDown={onKeyDown}
         />
+        )}
         {ghost && (
           <div className="ghost t-semimono t-input" aria-hidden>
             <span className="typed">{value}</span>
@@ -240,7 +316,7 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
           className="box suggest t-semimono t-input"
           role="listbox"
           aria-label="Address suggestions"
-          style={{ left: listBox.left, width: listBox.width, height: listH, top: field.top - LABEL_GAP - LABEL_LINE - 6 - listH }}
+          style={{ left: listBox.left, width: listBox.width, height: listBox.height - 1, top: listBox.top + 1 }}
         >
           {suggestions.map((a, i) => (
             <li
@@ -248,20 +324,26 @@ export function CountryInput({ grid, layout }: { grid: Grid; layout: LandingLayo
               role="option"
               aria-selected={i === active}
               className={i === active ? "on" : undefined}
-              style={{ height: ROW_H, lineHeight: `${ROW_H}px` }}
+              style={{ height: grid.cell, lineHeight: `${grid.cell}px` }}
               onMouseEnter={() => setActive(i)}
               // mousedown, not click: the field must not lose focus before the choice is made
               onMouseDown={(e) => {
                 e.preventDefault();
-                selectAddress({ id: a.id, label: a.label, lon: a.lon, lat: a.lat });
+                pickInto(a);
               }}
             >
-              {a.label}
+              {shortAddress(a.label)}
             </li>
           ))}
         </ul>
       )}
-      <button type="submit" className={`box go${acceptable ? " ready" : ""}`} style={button} disabled={!enabled} aria-label="Go">
+      <button type="button" className={`box back${backShown ? " shown" : ""}`} style={backBox} disabled={!backShown || !backCanClick} aria-hidden={!backShown} aria-label="Back" onClick={back}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
+          <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+          <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button type="submit" className={`box go${acceptable ? " ready" : ""}`} style={button} disabled={!enabled && !plotStep} aria-label="Go">
         <img src={arrowUrl} alt="" />
       </button>
     </form>

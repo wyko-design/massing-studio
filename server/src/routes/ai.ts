@@ -15,7 +15,10 @@ import type { LlmClient } from "../ai/llm/types";
 import { writeReport, PROMPT as REPORT_PROMPT } from "../ai/reportWriter";
 import { generateDirections, PROMPT as STRATEGY_PROMPT } from "../ai/strategyGenerator";
 import type { ServerConfig } from "../config";
+import { CacheMissError, UpstreamError, createTextFetcher } from "../cache/diskCache";
 import { loadSiteFixture } from "../providers/fixtureZoning";
+import { fetchPlanExcerpts } from "../providers/nl/planText";
+import { fetchPolicyExcerpt } from "../providers/nl/parkingPolicy";
 
 const STATUS: Record<AiError["kind"], 400 | 422 | 502 | 503> = {
   bad_request: 400,
@@ -72,10 +75,35 @@ export function aiRoutes(config: ServerConfig, llm: LlmClient) {
   app.post("/extract-rules", async (c) => {
     const b = await body(c, ExtractRulesRequestSchema);
     if (!b.ok) return fail(c, b.error);
-    const excerpts = b.data.excerpts ?? (await loadSiteFixture(config.sitesRoot, config.siteId))?.excerpts ?? [];
+    let excerpts = b.data.excerpts;
+    const fetchText = createTextFetcher({ cacheRoot: config.cacheRoot, dir: "_adhoc", mode: config.cacheMode });
+    const wantsLive = !!b.data.textRefs?.length || !!b.data.policyUrl;
+    if (!excerpts && wantsLive) {
+      // live data: read the plan articles the values came from and the municipal parking policy (adhoc cache, never the committed site cache)
+      try {
+        excerpts = [
+          ...(b.data.textRefs?.length ? await fetchPlanExcerpts(fetchText, b.data.textRefs, { general: true }) : []),
+          ...(b.data.policyUrl ? await fetchPolicyExcerpt(fetchText, b.data.policyUrl) : []),
+        ];
+      } catch (e) {
+        if (e instanceof CacheMissError) return fail(c, { kind: "unavailable", message: e.message, details: [] });
+        if (e instanceof UpstreamError) return fail(c, { kind: "unavailable", message: `Could not fetch the plan text (${e.status}).`, details: [] });
+        throw e;
+      }
+    }
+    excerpts ??= (await loadSiteFixture(config.sitesRoot, config.siteId))?.excerpts ?? [];
     if (excerpts.length === 0) {
       return c.json(
-        { ok: false, error: { kind: "bad_request", message: `No plan excerpts to read: the request has none and site fixture "${config.siteId}" has none.`, details: [] } },
+        {
+          ok: false,
+          error: {
+            kind: "bad_request",
+            message: wantsLive
+              ? "The plan text and policy behind these rules could not be read."
+              : `No plan excerpts to read: the request has none and site fixture "${config.siteId}" has none.`,
+            details: [],
+          },
+        },
         422,
       );
     }

@@ -34,10 +34,31 @@ export type JsonFetcherOptions = {
   dir: string;
   mode: CacheMode;
   fetchImpl?: typeof fetch;
+  /** Extra request headers per provider name. */
+  headers?: Record<string, Record<string, string>>;
 };
 
+/** Like `createJsonFetcher`, for text pages (stored as `<provider>-<sha1>.txt`). */
+export function createTextFetcher({ cacheRoot, dir, mode, fetchImpl = fetch, headers = {} }: JsonFetcherOptions): (provider: string, url: string) => Promise<string> {
+  return async (provider, url) => {
+    const file = path.join(cacheRoot, dir, cacheFileName(provider, url).replace(/\.json$/, ".txt"));
+    try {
+      return await readFile(file, "utf8");
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    }
+    if (mode === "offline") throw new CacheMissError(url);
+    const res = await fetchImpl(url, { headers: { accept: "text/html", ...headers[provider] } });
+    if (!res.ok) throw new UpstreamError(url, res.status);
+    const text = await res.text();
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, text);
+    return text;
+  };
+}
+
 /** Raw HTTP JSON bodies are stored per URL, so offline mode replays exactly what the provider sent. */
-export function createJsonFetcher({ cacheRoot, dir, mode, fetchImpl = fetch }: JsonFetcherOptions): JsonFetcher {
+export function createJsonFetcher({ cacheRoot, dir, mode, fetchImpl = fetch, headers = {} }: JsonFetcherOptions): JsonFetcher {
   return async (provider, url) => {
     const file = path.join(cacheRoot, dir, cacheFileName(provider, url));
     try {
@@ -47,10 +68,16 @@ export function createJsonFetcher({ cacheRoot, dir, mode, fetchImpl = fetch }: J
     }
     if (mode === "offline") throw new CacheMissError(url);
 
-    const res = await fetchImpl(url, { headers: { accept: "application/json" } });
+    const res = await fetchImpl(url, { headers: { accept: "application/json", ...headers[provider] } });
     if (!res.ok) throw new UpstreamError(url, res.status);
     const text = await res.text();
-    const body = JSON.parse(text) as unknown;
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      // some services answer 200 with an HTML page when a request is not accepted: never cache that
+      throw new UpstreamError(url, 415);
+    }
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, text);
     return body;

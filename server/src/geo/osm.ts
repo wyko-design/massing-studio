@@ -171,3 +171,42 @@ export async function fetchDetails(bbox: Bbox, fetchImpl: typeof fetch = fetch):
   }
   return { roads, water };
 }
+
+/** Street and path classes for the site model's traffic: cars drive the streets, people walk the paths (and beside streets). */
+const STREET_CLASSES = "motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|pedestrian|footway|path";
+
+/** One way: highway class (`_link` dropped) and its points [lon, lat][]. */
+export type StreetLine = { h: string; p: [number, number][] };
+
+const round6 = (v: number) => Math.round(v * 1e6) / 1e6;
+
+/** Overpass ways with their class as `h`; points rounded to ~0.1 m, so ways that share a node keep identical points. */
+export function parseStreets(json: unknown): StreetLine[] {
+  const els = (json as { elements?: OverpassElement[] }).elements ?? [];
+  return els.flatMap((el) => {
+    const g = el.geometry;
+    const h = el.tags?.h;
+    if (!g || !h) return [];
+    const p = Array.isArray(g)
+      ? g.map((q) => [round6(q.lon), round6(q.lat)] as [number, number])
+      : g.type === "LineString"
+        ? g.coordinates.map((q) => [round6(q[0]!), round6(q[1]!)] as [number, number])
+        : [];
+    return p.length > 1 ? [{ h: h.replace(/_link$/, ""), p }] : [];
+  });
+}
+
+/** Widest box for the streets (≈ 3 km): the site model is a few hundred metres across. */
+export const STREETS_SPAN_DEG = 0.03;
+
+/** Streets and paths of a small box (the site model), same Overpass query form as `fetchDetails`. */
+export async function fetchStreets(bbox: Bbox, fetchImpl: typeof fetch = fetch): Promise<StreetLine[]> {
+  const b = clampBbox(bbox, STREETS_SPAN_DEG);
+  const box = `${b.s.toFixed(5)},${b.w.toFixed(5)},${b.n.toFixed(5)},${b.e.toFixed(5)}`;
+  return parseStreets(
+    await overpass(
+      `[out:json][timeout:30];(way["highway"~"^(${STREET_CLASSES})(_link)?$"](${box}););convert item ::=::,::geom=geom(),h=t["highway"];out geom qt;`,
+      fetchImpl,
+    ),
+  );
+}

@@ -1,15 +1,21 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { compress } from "hono/compress";
 import { Hono } from "hono";
 import { basicAuth } from "hono/basic-auth";
 import { sampleScene } from "@massing/shared";
-import { CacheMissError, UpstreamError, createJsonFetcher } from "./cache/diskCache";
+import { CacheMissError, UpstreamError, createJsonFetcher, createTextFetcher } from "./cache/diskCache";
 import type { ServerConfig } from "./config";
 import { Bag3dContextProvider } from "./providers/nl/bag3d";
 import { KadasterParcelProvider } from "./providers/nl/kadasterParcel";
 import { LocatieserverGeocoder } from "./providers/nl/locatieserver";
 import { FixtureZoningProvider } from "./providers/fixtureZoning";
+import { restrictionNotes } from "./providers/nl/restrictions";
+import { streetSideFor } from "./providers/nl/streetSide";
+import { FirstZoningProvider } from "./providers/firstZoning";
+import { loadParkingPolicy } from "./providers/nl/parkingPolicy";
+import { RP_HEADERS, RP_PROVIDER, RuimtelijkePlannenZoningProvider, planNamesAt } from "./providers/nl/ruimtelijkePlannen";
 import { SceneError, buildScene, type SceneProviders } from "./scene";
 import { AgentSdkClient } from "./ai/llm/agentSdkClient";
 import { GeminiClient } from "./ai/llm/geminiClient";
@@ -28,14 +34,20 @@ export type AppDeps = {
 const AD_HOC_DIR = "_adhoc";
 
 function nlProviders(config: ServerConfig, cacheDir: string): SceneProviders {
-  const fetchJson = createJsonFetcher({ cacheRoot: config.cacheRoot, dir: cacheDir, mode: config.cacheMode });
+  const fetchJson = createJsonFetcher({ cacheRoot: config.cacheRoot, dir: cacheDir, mode: config.cacheMode, headers: { [RP_PROVIDER]: RP_HEADERS } });
+  const fetchText = createTextFetcher({ cacheRoot: config.cacheRoot, dir: cacheDir, mode: config.cacheMode });
   const context = new Bag3dContextProvider(fetchJson);
   return {
     geocoder: new LocatieserverGeocoder(fetchJson),
     parcels: new KadasterParcelProvider(fetchJson),
     context,
-    zoning: new FixtureZoningProvider(config.sitesRoot, config.siteId),
+    // hand-checked fixture first, then live plan data
+    zoning: new FirstZoningProvider([new FixtureZoningProvider(config.sitesRoot, config.siteId), new RuimtelijkePlannenZoningProvider(fetchJson)]),
     skippedContext: () => context.lastSkipped,
+    streetSide: (parcel) => streetSideFor(fetchJson, parcel),
+    restrictions: (point) => restrictionNotes(fetchJson, point),
+    parking: async ({ municipality, point }) =>
+      loadParkingPolicy({ fetchText, municipality, planNames: await planNamesAt(fetchJson, point).catch(() => []) }),
   };
 }
 
@@ -52,6 +64,9 @@ const sameAddress = (a: string, b: string) => a.trim().toLowerCase() === b.trim(
 
 export function createApp({ config, providersFor, llm }: AppDeps) {
   const app = new Hono();
+
+  // gzip for JSON and the built client (plot answers are 0.2–2 MB of coordinates, ~5× smaller compressed)
+  app.use("*", compress());
 
   // Hosted use: one shared password for the whole site. The browser asks once and remembers it.
   if (config.accessPassword) {

@@ -9,3 +9,9 @@ coverage/
 .DS_Store
 Thumbs.db
 data/cache/_adhoc/
+# computed plot answers (large, rebuilt from the ignored upstream cache above)
+data/cache/_geo/plot-*
+# ...except the demo address (Hendrik Casimirstraat 8, Delft): its plot and the site model's wider plot (r = 198 m), so the
+# demo runs offline (key: PLOT_VERSION|address id|radius, see server/src/routes/geo.ts)
+!data/cache/_geo/plot-aeb2ca8e90d3.json
+!data/cache/_geo/plot-813661c43408.json

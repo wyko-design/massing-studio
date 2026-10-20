@@ -47,5 +47,24 @@ export function insetPerEdge(ring: Ring, distances: number[]): MultiPolygon {
     cuts.push([circle(a, d)], [circle(b, d)]);
   }
   const subject: Pair[][] = [closeRing(ring)];
-  return cuts.length ? polygonClipping.difference(subject, ...cuts) : [subject];
+  if (!cuts.length) return [subject];
+  try {
+    return polygonClipping.difference(subject, ...cuts);
+  } catch {
+    // polygon-clipping can fail on many near-coincident edges ("Unable to complete output ring", e.g. Coolsingel 40,
+    // Rotterdam): retry on a 1 mm grid, and if that fails too, take the cuts away one at a time
+    const snap = (polys: Pair[][][]): Pair[][][] => polys.map((p) => p.map((r) => r.map(([x, y]) => [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000] as Pair)));
+    const snappedCuts = snap(cuts);
+    const [snapped] = snap([subject]);
+    try {
+      return polygonClipping.difference(snapped!, ...snappedCuts);
+    } catch {
+      let out: MultiPolygon = [snapped!];
+      for (const cut of snappedCuts) {
+        if (!out.length) break;
+        out = polygonClipping.difference(snap(out as Pair[][][]) as MultiPolygon, cut);
+      }
+      return out;
+    }
+  }
 }

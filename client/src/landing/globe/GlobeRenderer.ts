@@ -1,5 +1,4 @@
 import { mesh } from "topojson-client";
-import polygonClipping from "polygon-clipping";
 import type { CountryShape, WorldTopology } from "../countries";
 import { buildCountryIndex } from "./countryIndex";
 import { DotLayer, zoomLevel } from "./dots";
@@ -10,8 +9,11 @@ import { asMultiPolygon, circlePolygon, cleanPolygons, geometryBbox, insideTest 
 import { countryCentre, fitScale, mainPolygon, viewBlend, type Rect, type View } from "./geo";
 import type { GlobeStyle } from "./globeStyle";
 import { SHUFFLE_DEFAULTS } from "../shuffle";
+import { perfDraw, perfLaps, perfStage, timed } from "../perf";
+import { mergeWater } from "./tileGeometry";
+import { cityTilesAsync, countryTilesAsync } from "./tileJobs";
 import { basisFor, fillPieces, linePieces, polygonPieces, strokePieces, toVec, type Piece } from "./pieces";
-import { EARTH_R, localParcel, plotDots, plotLevel, plotView, toLonLat, type LocalParcel, type PlotData } from "./plotLayer";
+import { EARTH_R, localParcel, plotDots, plotLevel, plotView, toLonLat, type GroundKind, type LocalParcel, type PlotData } from "./plotLayer";
 
 /** OpenFreeMap tiles of one map level (country or city): merged water, its outline, borders, and the area they cover. */
 type TileLayer = {
@@ -31,6 +33,8 @@ type TileLayer = {
 type PlotLayer = {
   parcel: Piece[];
   buildings: Piece[];
+  /** BGT ground surfaces (roads, water). */
+  ground: Record<GroundKind, Piece[]>;
   local: LocalParcel | null;
   /** Scale of the final plot view (buildings fade in towards it). */
   finalScale: number;
@@ -50,6 +54,9 @@ export type GlobePlacement = {
   full: Rect;
 };
 
+/** The address bar widens over 600 ms (landing.css); it starts this long before the text starts to resolve. */
+const WIDEN_LEAD_MS = 650;
+
 /** Closest the camera gets (px per radian): the lattice has levels up to `maxLevel` only. */
 const MAX_SCALE = 2_000_000;
 
@@ -57,7 +64,7 @@ const MAX_SCALE = 2_000_000;
  * One step of a sequence. `run(t)` is called every frame with t ∈ [0, 1] over `ms`; a stage with
  * `until` also ends early once it returns true (a wait that gives up after `ms`).
  */
-type Stage = { ms: number; run?: (t: number) => void; until?: () => boolean };
+type Stage = { name?: string; ms: number; run?: (t: number) => void; until?: () => boolean };
 
 /**
  * Orthographic globe on a 2D canvas: water, land as dots fixed to the sphere (drawn in perspective),
@@ -75,7 +82,12 @@ export class GlobeRenderer {
   /** Every country's polygons, to fill the ones that are not selected. */
   private countryPieces = new Map<string, Piece[]>();
   private selected: CountryShape | null = null;
+  /** The selected country's blue outline: its polygon with the map tiles' water cut out, so it follows the same shore as the grey lines. */
   private selectedPieces: Piece[] = [];
+  /** The selected country's whole polygon, for the grey fill once a city is chosen (water bodies stay filled, see `draw`). */
+  private selectedFill: Piece[] = [];
+  /** Point-in-country test of the selected country with its inlets closed (set once its map tiles are in). */
+  private selectedInside: ((lon: number, lat: number) => boolean) | null = null;
   private view: View | null = null;
   private spinLon: number;
   /** "spin": idle and turning; "still": parked on a country (or idle with reduced motion). */
@@ -89,6 +101,8 @@ export class GlobeRenderer {
   /** Selected city: outline pieces, "inside" test for the dots, the geometry (for framing), how blue it is, map details. */
   private cityPieces: Piece[] = [];
   private cityInside: ((lon: number, lat: number) => boolean) | null = null;
+  /** The city's boundary as given (water included): only inside it do the city's tiles decide the dots. */
+  private cityBoundary: ((lon: number, lat: number) => boolean) | null = null;
   private cityGeometry: MultiPolygon | null = null;
   private cityBlue = 0;
   /** Selected plot (parcel + surrounding buildings) and how blue it is: the parcel's outline and dot infill. */
@@ -112,6 +126,9 @@ export class GlobeRenderer {
   /** Called once per zoom in, `SHUFFLE_DEFAULTS.durationMs` (+ 100 ms of lead) before the camera stops (the text then resolves in time). */
   resolveCue: (() => void) | null = null;
   private cueFired = false;
+  /** Called once per zoom in, `WIDEN_LEAD_MS` before `resolveCue` (the address bar needs that long to widen). */
+  widenCue: (() => void) | null = null;
+  private widenFired = false;
   /** Duration of the last drawn frame (ms), for checking performance. */
   frameMs = 0;
 
@@ -130,6 +147,11 @@ export class GlobeRenderer {
   }
 
   setData(topology: WorldTopology, coarse: WorldTopology, shapes: Iterable<CountryShape>) {
+    timed("setData", () => this.setDataNow(topology, coarse, shapes));
+    this.requestFrame();
+  }
+
+  private setDataNow(topology: WorldTopology, coarse: WorldTopology, shapes: Iterable<CountryShape>) {
     const list = [...shapes];
     this.dots = new DotLayer(buildCountryIndex(list));
     this.countryPieces = new Map(list.map((c) => [c.id, polygonPieces(c.geometry)]));
@@ -137,7 +159,6 @@ export class GlobeRenderer {
     this.coastPieces = linePieces(mesh(topology, countries, (a, b) => a === b));
     this.coarseCoastPieces = linePieces(mesh(coarse, coarse.objects.countries, (a, b) => a === b));
     this.borderPieces = linePieces(mesh(topology, countries, (a, b) => a !== b));
-    this.requestFrame();
   }
 
   setReducedMotion(reduced: boolean) {
@@ -171,8 +192,10 @@ export class GlobeRenderer {
    */
   toCountry(shape: CountryShape, done: () => void, tiles: (bbox: CityBoundary["bbox"]) => Promise<TileData | null>) {
     this.cueFired = false;
+    this.widenFired = false;
     this.selected = shape;
-    this.selectedPieces = polygonPieces(shape.geometry);
+    this.selectedPieces = this.selectedFill = polygonPieces(shape.geometry);
+    this.selectedInside = null;
     this.mode = "still";
     this.blue = 0;
     const from = this.view ?? this.idleView();
@@ -187,10 +210,20 @@ export class GlobeRenderer {
     let tilesSettled = false;
     const box = this.frameBox(target, 1.5);
     void tiles(box)
-      .then((data) => {
+      .then(async (data) => {
         if (token !== this.countryToken || !data) return;
-        this.countryTiles = this.makeLayer(data, box, 1.5, false, target.scale);
-        this.applyOverride();
+        const pxDeg = ((180 / Math.PI) * 1) / target.scale;
+        // no water inside the country at this level (estuaries, lakes, rivers): only the water outside its polygon is kept, so
+        // the grey shore along the country is the polygon's own edge, which is also what the blue outline is
+        // inlets, estuaries and gaps up to ~12 px wide at the final frame are closed first: they read as land
+        // (in a worker: the unions and differences take ~400 ms, which froze the pan)
+        const { closed, water } = await countryTilesAsync(asMultiPolygon(shape.geometry), data.water, pxDeg);
+        if (token !== this.countryToken) return;
+        this.selectedPieces = this.selectedFill = polygonPieces(closed);
+        const closedIndex = buildCountryIndex([{ id: "closed", name: "closed", geometry: closed }]);
+        this.selectedInside = (lon, lat) => closedIndex.lookup(lon, lat) >= 0;
+        this.countryTiles = timed("makeLayer", () => this.makeLayer(data, box, 1.5, false, target.scale, water));
+        timed("applyOverride", () => this.applyOverride());
         this.warmFor(zoom);
       })
       .catch(() => undefined)
@@ -200,12 +233,13 @@ export class GlobeRenderer {
     const st = this.style;
     this.runSequence(
       [
-        { ms: st.panMs, run: (t) => (this.view = pan(easeCubicInOut(t), 0)) },
-        { ms: st.blueMs, run: (t) => (this.blue = easeCubicInOut(t)) },
-        { ms: st.holdMs }, // a beat on the blue country before the zoom
-        { ms: 4000, until: () => tilesSettled }, // the tiles of the zoom (normally long here already)
-        { ms: st.warmWaitMs, until: () => this.warmDone() },
+        { name: "pan", ms: st.panMs, run: (t) => (this.view = pan(easeCubicInOut(t), 0)) },
+        { name: "blue", ms: st.blueMs, run: (t) => (this.blue = easeCubicInOut(t)) },
+        { name: "hold", ms: st.holdMs }, // a beat on the blue country before the zoom
+        { name: "waitTiles", ms: 4000, until: () => tilesSettled }, // the tiles of the zoom (normally long here already)
+        { name: "warmDots", ms: st.warmWaitMs, until: () => this.warmDone() },
         {
+          name: "zoom",
           ms: st.zoomMs,
           run: (t) => {
             this.view = zoom(1, easePolyInOut.exponent(4)(t));
@@ -255,9 +289,10 @@ export class GlobeRenderer {
       [
         ...(plotZoom
           ? [
-              { ms: st.plotZoomMs, run: (t: number) => this.zoomOut(plotZoom, t) },
+              { name: "zoomOut", ms: st.plotZoomMs, run: (t: number) => this.zoomOut(plotZoom, t) },
               {
-                ms: st.blueMs,
+                name: "blue",
+          ms: st.blueMs,
                 run: (t: number) => {
                   const e = easeCubicInOut(t);
                   this.plotBlue = plotBlue0 * (1 - e);
@@ -266,8 +301,9 @@ export class GlobeRenderer {
               },
             ]
           : []),
-        { ms: st.zoomMs, run: (t) => this.zoomOut(zoom, t) },
+        { name: "zoomOut", ms: st.zoomMs, run: (t) => this.zoomOut(zoom, t) },
         {
+          name: "blue",
           ms: st.blueMs,
           run: (t) => {
             this.blue = blue0 * (1 - easeCubicInOut(t));
@@ -287,6 +323,71 @@ export class GlobeRenderer {
     );
   }
 
+  /** Back arrow from a plot: zoom out to the city and swap the blue back from the parcel to the city. */
+  backToCity(done: () => void) {
+    if (!this.plot || !this.cityGeometry) return done();
+    const zoom = viewBlend(this.view ?? this.plotViewOf(), this.cityView());
+    const plotBlue0 = this.plotBlue;
+    const st = this.style;
+    const finish = () => {
+      this.plot = null;
+      this.plotData = null;
+      this.plotBlue = 0;
+      this.plotToken++;
+      this.cityBlue = 1;
+      this.applyOverride();
+      this.view = this.cityView();
+      done();
+    };
+    this.runSequence(
+      [
+        { name: "zoomOut", ms: st.plotZoomMs, run: (t) => this.zoomOut(zoom, t) },
+        {
+          name: "blue",
+          ms: st.blueMs,
+          run: (t) => {
+            const e = easeCubicInOut(t);
+            this.plotBlue = plotBlue0 * (1 - e);
+            this.cityBlue = e;
+          },
+        },
+      ],
+      finish,
+      finish,
+    );
+  }
+
+  /** Back arrow from a city: zoom out to the country, the blue moves from the city back to the whole country. */
+  backToCountry(done: () => void) {
+    if (!this.selected || !this.cityGeometry) return done();
+    const target = this.countryView(this.selected);
+    const zoom = viewBlend(this.view ?? this.cityView(), target);
+    const cityBlue0 = this.cityBlue;
+    const st = this.style;
+    const finish = () => {
+      this.clearCity();
+      this.blue = 1;
+      this.view = target;
+      done();
+    };
+    this.runSequence(
+      [
+        { name: "zoomOut", ms: st.zoomMs, run: (t) => this.zoomOut(zoom, t) },
+        {
+          name: "blue",
+          ms: st.blueMs,
+          run: (t) => {
+            const e = easeCubicInOut(t);
+            this.cityBlue = cityBlue0 * (1 - e);
+            this.blue = e;
+          },
+        },
+      ],
+      finish,
+      finish,
+    );
+  }
+
   private zoomOut(zoom: (turn: number, zoom: number) => View, t: number) {
     const e = easePolyInOut.exponent(4)(t);
     this.view = zoom(e, e);
@@ -295,6 +396,7 @@ export class GlobeRenderer {
   private clearCity() {
     this.cityPieces = [];
     this.cityInside = null;
+    this.cityBoundary = null;
     this.cityGeometry = null;
     this.cityBlue = 0;
     this.tiles = null;
@@ -302,6 +404,7 @@ export class GlobeRenderer {
     this.plotData = null;
     this.plotBlue = 0;
     this.plotToken++;
+    this.dots?.dropStagedOverride();
     this.applyOverride();
     this.cityToken++;
   }
@@ -317,6 +420,7 @@ export class GlobeRenderer {
    */
   toPlot(point: [number, number], data: Promise<PlotData | null>, done: () => void, failed: () => void) {
     this.cueFired = false;
+    this.widenFired = false;
     const token = ++this.plotToken;
     const from = this.view ?? this.cityView();
     const above: View = { ...from, centre: point };
@@ -332,12 +436,15 @@ export class GlobeRenderer {
         this.plotData = d;
         const target = plotView(d, this.p!.full);
         const polys = d.parcel?.polygons ?? [];
-        this.plot = {
+        this.plot = timed("plotPieces", () => ({
           parcel: polys.flatMap((p) => polygonPieces({ type: "Polygon", coordinates: p })),
+          ground: Object.fromEntries(
+            (Object.keys(d.ground) as GroundKind[]).map((k) => [k, d.ground[k].length ? polygonPieces({ type: "MultiPolygon", coordinates: d.ground[k] }) : []]),
+          ) as Record<GroundKind, Piece[]>,
           buildings: d.buildings.flatMap((b) => polygonPieces({ type: "Polygon", coordinates: [[...b.ring, b.ring[0]!]] })),
           local: polys.length ? localParcel(polys, target.centre) : null,
           finalScale: target.scale,
-        };
+        }));
         ready = { zoom: viewBlend(above, target), target };
       })
       .catch(() => {
@@ -346,6 +453,7 @@ export class GlobeRenderer {
 
     // the plot could not be loaded: pan back over the city and give the step back
     const abort = () => {
+      ++this.plotToken; // an answer that still arrives after this is dropped
       this.plot = null;
       this.plotData = null;
       this.plotBlue = 0;
@@ -365,19 +473,23 @@ export class GlobeRenderer {
     };
     this.runSequence(
       [
-        { ms: st.cityPanMs, run: (t) => (this.view = pan(easeCubicInOut(t), 0)) },
-        { ms: st.cityWaitMs, until: () => ready !== null || broken },
+        { name: "pan", ms: st.cityPanMs, run: (t) => (this.view = pan(easeCubicInOut(t), 0)) },
+        // a large plot can take a while the first time (nothing cached yet): wait longer than for a city, and if it still
+        // has not come, give the step back rather than "zoom" without a target
+        { name: "waitData", ms: st.plotWaitMs, until: () => ready !== null || broken },
         {
+          name: "blue",
           ms: st.blueMs,
           run: (t) => {
-            if (broken) return abort();
+            if (broken || !ready) return abort();
             const e = easeCubicInOut(t);
             this.cityBlue = 1 - e;
             this.plotBlue = e;
           },
         },
-        { ms: st.holdMs },
+        { name: "hold", ms: st.holdMs },
         {
+          name: "zoom",
           ms: st.plotZoomMs,
           run: (t) => {
             if (ready) this.view = ready.zoom(easePolyInOut.exponent(4)(t), easePolyInOut.exponent(4)(t));
@@ -419,7 +531,9 @@ export class GlobeRenderer {
     done: () => void,
   ) {
     this.cueFired = false;
+    this.widenFired = false;
     const token = ++this.cityToken;
+    this.dots?.dropStagedOverride(); // one left by a flight that was cut short
     const from = this.view ?? this.idleView();
     const above: View = { ...from, centre: [city.lon, city.lat] };
     const pan = viewBlend(from, above);
@@ -442,20 +556,23 @@ export class GlobeRenderer {
         if (token !== this.cityToken) return;
         this.cityPieces = polygonPieces(geometry);
         this.cityInside = insideTest(geometry);
+        this.cityBoundary = this.cityInside;
         if (data) {
           const pxDeg = ((180 / Math.PI) * 1) / final.scale;
-          const water = this.mergeWater(data, pxDeg);
-          this.tiles = this.makeLayer(data, box, 2, true, final.scale, water);
-          this.applyOverride();
+          // the water merged and the city cut to its land, in a worker (see tileJobs.ts)
+          const { water, land } = await cityTilesAsync(geometry, data.water, pxDeg);
+          if (token !== this.cityToken) return;
+          // the dots keep following the country's map until the blue snaps onto the city (see the blue stage below)
+          this.tiles = timed("makeLayer", () => this.makeLayer(data, box, 2, true, final.scale, water));
           // the boundary runs out to sea and over lakes: the city is its land (water cut out, so its outline follows the shore
           // and goes round lakes and rivers, and no dots land on water)
-          const land = this.landOnly(geometry, water, pxDeg);
           this.cityGeometry = land;
           this.cityPieces = polygonPieces(land);
           this.cityInside = insideTest(land);
         }
         const target = this.cityView();
         const zoom = viewBlend(above, target);
+        this.stageCityOverride();
         this.warmFor(zoom, true); // the centre drifts to the city's middle during the zoom
         ready = { zoom, target };
       })
@@ -464,26 +581,34 @@ export class GlobeRenderer {
       });
 
     const blue0 = this.blue;
+    let overridden = false;
     const finish = () => {
+      if (!overridden) this.commitCityOverride();
       if (ready) this.view = ready.target;
       this.blue = 0;
       this.cityBlue = 1;
     };
     this.runSequence(
       [
-        { ms: st.cityPanMs, run: (t) => (this.view = pan(easeCubicInOut(t), 0)) },
-        { ms: st.cityWaitMs, until: () => ready !== null || failed },
+        { name: "pan", ms: st.cityPanMs, run: (t) => (this.view = pan(easeCubicInOut(t), 0)) },
+        { name: "waitData", ms: st.cityWaitMs, until: () => ready !== null || failed },
         {
+          name: "blue",
           ms: st.blueMs,
           run: (t) => {
+            if (!overridden) {
+              overridden = true;
+              this.commitCityOverride();
+            }
             const e = easeCubicInOut(t);
             this.blue = blue0 * (1 - e);
             this.cityBlue = e;
           },
         },
-        { ms: st.holdMs },
-        { ms: st.warmWaitMs, until: () => this.warmDone() },
+        { name: "hold", ms: st.holdMs },
+        { name: "warmDots", ms: st.warmWaitMs, until: () => this.warmDone() },
         {
+          name: "zoom",
           ms: st.cityZoomMs,
           run: (t) => {
             if (ready) this.view = ready.zoom(easePolyInOut.exponent(4)(t), easePolyInOut.exponent(4)(t));
@@ -497,35 +622,6 @@ export class GlobeRenderer {
       },
       finish,
     );
-  }
-
-  /**
-   * The tiles' water polygons merged into one outline set: tile pieces and overlapping features (river + dock + basin)
-   * become single bodies, so there are no seams, doubled lines or tile-edge lines; slivers, spikes and tiny holes are dropped.
-   */
-  private mergeWater(data: TileData, pxDeg: number): Position[][][] {
-    try {
-      const [first, ...rest] = data.water;
-      if (!first) return [];
-      // only substantial bodies stay: at the final frame at least ~8 px wide and 1 500 px² (the sea is far bigger); islands 4 px and 100 px²
-      return cleanPolygons(polygonClipping.union(first as never, ...(rest as never[])), pxDeg, {
-        outer: { area: 1500, width: 8 },
-        hole: { area: 100, width: 4 },
-      });
-    } catch {
-      return data.water;
-    }
-  }
-
-  /** The city polygon minus the water of the tiles; the polygon itself when the clipping fails or leaves nothing. */
-  private landOnly(city: MultiPolygon, water: Position[][][], pxDeg: number): MultiPolygon {
-    try {
-      const out = polygonClipping.difference(city.coordinates as never, ...(water as never[]));
-      const clean = cleanPolygons(out, pxDeg);
-      return clean.length ? asMultiPolygon({ type: "MultiPolygon", coordinates: clean }) : city;
-    } catch {
-      return city;
-    }
   }
 
   /**
@@ -570,7 +666,7 @@ export class GlobeRenderer {
     factor: number,
     land: boolean,
     finalScale: number,
-    merged = this.mergeWater(data, ((180 / Math.PI) * 1) / finalScale),
+    merged = mergeWater(data.water, ((180 / Math.PI) * 1) / finalScale),
   ): TileLayer {
     const water: MultiPolygon = asMultiPolygon({ type: "MultiPolygon", coordinates: merged });
     const index = buildCountryIndex([{ id: "water", name: "water", geometry: water }]);
@@ -594,18 +690,41 @@ export class GlobeRenderer {
    * land belongs to the selected country (city tiles only). The city's tiles decide inside their box, the country's elsewhere.
    */
   private applyOverride() {
+    const o = this.overrideFor();
+    if (o) this.dots!.setOverride(o.box, o.fn);
+    else this.dots?.clearOverride();
+  }
+
+  private overrideFor(): { box: TileLayer["box"]; fn: (lon: number, lat: number, c: number) => number } | null {
     const country = this.countryTiles;
     const city = this.tiles;
     const outer = country ?? city;
-    if (!outer || !this.dots) return void this.dots?.clearOverride();
+    if (!outer || !this.dots) return null;
     const selected = this.selected ? this.dots.countryNumber(this.selected.id) : -1;
     const inside = (b: TileLayer["box"], lon: number, lat: number) => lon >= b.w && lon <= b.e && lat >= b.s && lat <= b.n;
-    this.dots.setOverride(outer.box, (lon, lat, c) => {
-      const layer = city && inside(city.box, lon, lat) ? city : country ?? city!;
-      if (layer.inWater(lon, lat)) return -1;
-      // only the city's tiles are exact enough to turn sea (by the country polygons) into land
-      return c < 0 && layer === city ? selected : c;
-    });
+    return {
+      box: outer.box,
+      fn: (lon, lat, c) => {
+        const layer = city && inside(city.box, lon, lat) && this.cityBoundary?.(lon, lat) ? city : country ?? city!;
+        if (layer.inWater(lon, lat)) return -1;
+        if (c < 0 && this.selectedInside?.(lon, lat)) return selected;
+        // only the city's tiles are exact enough to turn sea (by the country polygons) into land
+        return c < 0 && layer === city ? selected : c;
+      },
+    };
+  }
+
+  /**
+   * The city's override, prepared while the camera pans (`warmFor` fills its cache) and switched on at the blue: applied
+   * there at once, it tested every dot in one frame (~50 ms).
+   */
+  private stageCityOverride() {
+    const o = this.overrideFor();
+    if (o) this.dots!.stageOverride(o.box, o.fn);
+  }
+
+  private commitCityOverride() {
+    if (!this.dots?.commitOverride()) this.applyOverride();
   }
 
   /** Warms the dots along `zoom` (40 sampled views), in time slices spread over the following frames. */
@@ -613,11 +732,18 @@ export class GlobeRenderer {
     const dots = this.dots;
     if (!dots) return void (this.warmGens = []);
     const steps = 40;
-    this.warmGens = Array.from({ length: steps + 1 }, (_, i) => dots.warm(zoom(drift ? i / steps : 1, i / steps), this.style.dots));
+    // a selected city: its inside test (and the staged override) are warmed too, so the blue and the zoom only read caches
+    const selected = this.selected ? dots.countryNumber(this.selected.id) : -1;
+    const city = this.cityInside && selected >= 0 ? { selected, inside: this.cityInside } : undefined;
+    this.warmGens = Array.from({ length: steps + 1 }, (_, i) => dots.warm(zoom(drift ? i / steps : 1, i / steps), this.style.dots, 1500, city));
   }
 
   private cueResolve(t: number, ms: number) {
     // a little early (React render + timer drift cost ~ 80 ms): readable at the moment the camera stops, not after
+    if (!this.widenFired && ms * (1 - t) <= SHUFFLE_DEFAULTS.durationMs + 100 + WIDEN_LEAD_MS) {
+      this.widenFired = true;
+      this.widenCue?.();
+    }
     if (this.cueFired || ms * (1 - t) > SHUFFLE_DEFAULTS.durationMs + 100) return;
     this.cueFired = true;
     this.resolveCue?.();
@@ -708,6 +834,7 @@ export class GlobeRenderer {
   private advanceStages(now: number) {
     // look up dots a little every frame while the globe pans / turns blue, a lot while waiting for them
     const stage = this.stages[0]!;
+    perfStage(stage.name ?? "stage");
     this.warmSome(stage.until ? 10 : 6);
     const t = stage.ms <= 0 ? 1 : Math.min(1, (now - this.stageStart) / stage.ms);
     stage.run?.(t);
@@ -716,6 +843,7 @@ export class GlobeRenderer {
       this.stages.shift();
       this.stageStart = now;
       if (!this.stages.length) {
+        perfStage("");
         const done = this.sequenceDone;
         this.sequenceDone = null;
         done?.();
@@ -747,6 +875,19 @@ export class GlobeRenderer {
     return x * x * (3 - 2 * x);
   }
 
+  private scratch: HTMLCanvasElement | null = null;
+  private scratch2: HTMLCanvasElement | null = null;
+
+  /** An offscreen canvas the size of the main one (a second one on request), for lines that are trimmed before they are drawn. */
+  private scratchCanvas(second = false): HTMLCanvasElement {
+    const s = second ? (this.scratch2 ??= document.createElement("canvas")) : (this.scratch ??= document.createElement("canvas"));
+    if (s.width !== this.canvas.width || s.height !== this.canvas.height) {
+      s.width = this.canvas.width;
+      s.height = this.canvas.height;
+    }
+    return s;
+  }
+
   /** Width of a crisp 1 px line in CSS px: a whole number of device pixels. */
   private hairline() {
     return Math.max(1, Math.floor(this.p!.dpr)) / this.p!.dpr;
@@ -757,6 +898,7 @@ export class GlobeRenderer {
     const view = this.view;
     if (!p || !view) return;
     const t0 = performance.now();
+    const lap = perfLaps("draw");
     const { ctx, style } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -788,6 +930,9 @@ export class GlobeRenderer {
       ctx.globalAlpha = fill;
       ctx.fillStyle = style.otherFill;
       for (const [id, pieces] of this.countryPieces) if (id !== this.selected!.id) fillPieces(ctx, pieces, view);
+      // the neighbours' coarse outlines reach over the selected country's coast (Zeeland, the estuaries): it stays white on top
+      ctx.fillStyle = style.water;
+      fillPieces(ctx, this.selectedFill, view);
       ctx.globalAlpha = 1;
     }
     // a city selected: everything but the city is filled (and it stays filled once a plot is chosen)
@@ -795,20 +940,24 @@ export class GlobeRenderer {
     if (this.selected && cityMode > 0 && this.cityGeometry) {
       ctx.globalAlpha = cityMode;
       ctx.fillStyle = style.otherFill;
-      fillPieces(ctx, this.selectedPieces, view);
+      fillPieces(ctx, this.selectedFill, view);
       ctx.globalAlpha = 1;
     }
     // the map tiles fade in as the frame gets inside them (the country's, then the city's over them): the city's fill the
     // frame with land (Background), both paint water white
     const aCountry = this.tileAlpha(view, this.countryTiles);
     const aCity = this.tileAlpha(view, this.tiles);
-    for (const [layer, a] of [[this.countryTiles, aCountry], [this.tiles, aCity]] as const) {
+    // the country's water bodies would show as white holes in the grey fill the moment a city is chosen (the blue fades out
+    // and they are suddenly the only thing that is not grey): they come back with the zoom, together with the city's own
+    const aCountryWater = aCountry * (1 - cityMode * (1 - aCity));
+    for (const [layer, a, aWater] of [[this.countryTiles, aCountry, aCountryWater], [this.tiles, aCity, aCity]] as const) {
       if (!layer || a <= 0) continue;
-      ctx.globalAlpha = a;
       if (layer.land) {
+        ctx.globalAlpha = a;
         ctx.fillStyle = style.otherFill;
         ctx.fillRect(view.clip.x, view.clip.y, view.clip.w, view.clip.h);
       }
+      ctx.globalAlpha = aWater;
       ctx.fillStyle = style.water;
       fillPieces(ctx, layer.water, view);
     }
@@ -828,11 +977,20 @@ export class GlobeRenderer {
       fillPieces(ctx, plot.parcel, view);
     }
     if (plot && aBuildings > 0) {
+      // BGT roads and water under the buildings
+      ctx.globalAlpha = aBuildings;
+      ctx.fillStyle = style.plot.roadFill;
+      fillPieces(ctx, plot.ground.road, view, 128);
+      ctx.fillStyle = style.plot.waterFill;
+      fillPieces(ctx, plot.ground.water, view, 128);
+    }
+    if (plot && aBuildings > 0) {
       ctx.globalAlpha = aBuildings;
       ctx.fillStyle = style.water;
       fillPieces(ctx, plot.buildings, view, 128);
     }
     ctx.globalAlpha = 1;
+    lap("fills");
     const tilesGone = 1 - Math.max(aCountry, aCity);
     if (this.plotBlue < 1) {
       this.dots?.draw(ctx, view, style.dots, selected, {
@@ -845,36 +1003,76 @@ export class GlobeRenderer {
       });
     }
     if (plot?.local && this.plotBlue > 0) this.drawPlotDots(view, plot.local, this.plotBlue);
+    lap("dots");
 
     // coastlines always, simplified on the whole globe; country borders always or only once zoomed in
     const zoom = zoomLevel(view, style.dots);
     const ramp = ([z0, z1]: [number, number]) => Math.max(0, Math.min(1, (zoom - z0) / (z1 - z0)));
     const detail = ramp(style.coastDetailFade);
     const borders = style.idleBorders ? 1 : ramp(style.bordersFade);
+    // once the map tiles are in, the blue outline is those very grey lines (the part within a few px of the country's or
+    // city's polygon, recoloured) and the polygon's own outline fades out: one source, so nothing can run beside them
+    const countryMix = aCountry * (1 - aCity);
+    const outlines: [Piece[], number][] = [];
+    if (this.selected && this.blue > 0 && countryMix > 0) outlines.push([this.selectedPieces, this.blue]);
+    if (this.cityBlue > 0 && aCity > 0) outlines.push([this.cityPieces, this.cityBlue]);
     ctx.lineWidth = this.hairline();
-    ctx.strokeStyle = style.border;
-    for (const [pieces, alpha] of [
-      [this.coarseCoastPieces, 1 - detail],
-      [this.coastPieces, detail * tilesGone],
-      [this.borderPieces, borders * tilesGone],
-    ] as const) {
-      if (alpha <= 0) continue;
-      ctx.globalAlpha = alpha;
-      strokePieces(ctx, pieces, view, style.minLoopPx);
-    }
-    // water outlines and borders of the tiles replace the 50m lines (the city's own outline, with its water cut out, is
-    // drawn blue on top); the country's give way to the city's as these fade in
-    ctx.strokeStyle = style.border;
-    for (const [layer, a] of [[this.countryTiles, aCountry * (1 - aCity)], [this.tiles, aCity]] as const) {
-      if (!layer || a <= 0) continue;
-      ctx.globalAlpha = a;
-      strokePieces(ctx, layer.shore, view, 0, 128);
-      strokePieces(ctx, layer.borders, view, 0, 128);
-    }
+    const drawGrey = (c: CanvasRenderingContext2D) => {
+      c.lineWidth = this.hairline();
+      c.strokeStyle = style.border;
+      for (const [pieces, alpha] of [
+        [this.coarseCoastPieces, 1 - detail],
+        [this.coastPieces, detail * tilesGone],
+        [this.borderPieces, borders * tilesGone],
+      ] as const) {
+        if (alpha <= 0) continue;
+        c.globalAlpha = alpha;
+        strokePieces(c, pieces, view, style.minLoopPx);
+      }
+      // water outlines and borders of the tiles replace the 50m lines (the city's own outline, with its water cut out, is
+      // drawn blue on top); the country's give way to the city's as these fade in
+      c.strokeStyle = style.border;
+      for (const [layer, a] of [[this.countryTiles, aCountry * (1 - aCity)], [this.tiles, aCity]] as const) {
+        if (!layer || a <= 0) continue;
+        c.globalAlpha = a;
+        strokePieces(c, layer.shore, view, 0, 128);
+        strokePieces(c, layer.borders, view, 0, 128);
+      }
+      c.globalAlpha = 1;
+    };
+    const scratch = outlines.length ? this.scratchCanvas() : null;
+    if (scratch) {
+      const sc = scratch.getContext("2d")!;
+      sc.setTransform(1, 0, 0, 1, 0, 0);
+      sc.clearRect(0, 0, scratch.width, scratch.height);
+      sc.setTransform(p.dpr, 0, 0, p.dpr, 0, 0);
+      drawGrey(sc);
+      sc.globalCompositeOperation = "source-atop";
+      sc.strokeStyle = style.selectedBorder;
+      sc.lineWidth = 12;
+      for (const [pieces, a] of outlines) {
+        sc.globalAlpha = a;
+        strokePieces(sc, pieces, view);
+      }
+      sc.globalAlpha = 1;
+      sc.globalCompositeOperation = "source-over";
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(scratch, 0, 0);
+      ctx.restore();
+    } else drawGrey(ctx);
+    lap(scratch ? "linesScratch" : "lines");
     ctx.globalAlpha = 1;
     if (plot && aBuildings > 0) {
       ctx.globalAlpha = aBuildings;
-      ctx.strokeStyle = style.border;
+      for (const [pieces, colour] of [
+        [plot.ground.road, style.plot.roadLine],
+        [plot.ground.water, style.plot.waterLine],
+      ] as const) {
+        ctx.strokeStyle = colour;
+        strokePieces(ctx, pieces, view, 0, 128);
+      }
+      ctx.strokeStyle = style.plot.waterLine;
       strokePieces(ctx, plot.buildings, view, 0, 128);
     }
     ctx.globalAlpha = 1;
@@ -884,14 +1082,40 @@ export class GlobeRenderer {
       strokePieces(ctx, plot.parcel, view);
     }
     ctx.globalAlpha = 1;
-    if (this.selected && this.blue > 0) {
-      ctx.globalAlpha = this.blue;
-      strokePieces(ctx, this.selectedPieces, view);
-    }
-    if (this.cityBlue > 0) {
-      ctx.globalAlpha = this.cityBlue;
-      strokePieces(ctx, this.cityPieces, view);
-    }
+    ctx.lineWidth = this.hairline();
+    // the polygon outlines stay, but not where a tile line (recoloured blue above) runs within the band: one line there, and
+    // no gap where the tiles have no line along the boundary
+    const polygonOutline = (pieces: Piece[], alpha: number, mix: number, layer: TileLayer | null) => {
+      if (mix <= 0 || !layer) {
+        ctx.globalAlpha = alpha;
+        strokePieces(ctx, pieces, view);
+        return;
+      }
+      const sc = this.scratchCanvas(true).getContext("2d")!;
+      sc.setTransform(1, 0, 0, 1, 0, 0);
+      sc.clearRect(0, 0, sc.canvas.width, sc.canvas.height);
+      sc.setTransform(p.dpr, 0, 0, p.dpr, 0, 0);
+      sc.lineWidth = this.hairline();
+      sc.strokeStyle = style.selectedBorder;
+      sc.globalAlpha = alpha;
+      strokePieces(sc, pieces, view);
+      sc.globalCompositeOperation = "destination-out";
+      sc.strokeStyle = "#000";
+      sc.lineWidth = 12;
+      sc.globalAlpha = mix;
+      strokePieces(sc, layer.shore, view, 0, 128);
+      strokePieces(sc, layer.borders, view, 0, 128);
+      sc.globalCompositeOperation = "source-over";
+      sc.globalAlpha = 1;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(sc.canvas, 0, 0);
+      ctx.restore();
+    };
+    if (this.selected && this.blue > 0) polygonOutline(this.selectedPieces, this.blue, countryMix, this.countryTiles);
+    if (this.cityBlue > 0) polygonOutline(this.cityPieces, this.cityBlue, aCity, this.tiles);
+    lap("plotAndOutline");
     ctx.globalAlpha = 1;
     ctx.beginPath();
     ctx.arc(view.cx, view.cy, view.scale, 0, 2 * Math.PI);
@@ -903,7 +1127,9 @@ export class GlobeRenderer {
     const vig = Math.max(0, Math.min(1, (zoom - v0) / (v1 - v0)));
     if (vig > 0) this.vignette(view.clip, style.vignetteWidth, vig);
     ctx.restore();
+    lap("vignette");
     this.frameMs = performance.now() - t0;
+    perfDraw("globe", this.frameMs);
   }
 
   /** Buildings fade in over the last three doublings of the zoom to the plot (before that they are specks). */

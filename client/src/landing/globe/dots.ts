@@ -40,6 +40,11 @@ function drawLevel(ell: number, style: DotStyle): { k: number; level: number; fa
   return { k, level: fade > 0.01 ? k + 1 : k, fade };
 }
 
+/** Selected city for `warm`: its country number and the inside test the draws will pass. */
+export type WarmCity = { selected: number; inside: (lon: number, lat: number) => boolean };
+
+type Staged = { box: { s: number; w: number; n: number; e: number }; fn: (lon: number, lat: number, country: number) => number; cache: Map<number, number> };
+
 export type DrawOptions = {
   /** Opacity of the dots of every country but the selected one (they give way to a fill). */
   otherAlpha?: number;
@@ -64,6 +69,10 @@ export class DotLayer {
   private cache = new Map<number, number>();
   private override: { box: { s: number; w: number; n: number; e: number }; fn: (lon: number, lat: number, country: number) => number } | null = null;
   private overrideCache = new Map<number, number>();
+  private staged: Staged | null = null;
+  /** Answers of the `inside` test of the last draw, per dot (a city outline has thousands of points: testing every dot every frame cost ~40 ms). */
+  private insideFn: DrawOptions["inside"] | null = null;
+  private insideCache = new Map<number, boolean>();
   private lattice: LatticeSpec | null = null;
   /** Dots drawn in the last frame. */
   drawn = 0;
@@ -77,7 +86,7 @@ export class DotLayer {
    * the caller can spread the work over several slices. Used before a flight, so the zoom does not
    * pop dots in.
    */
-  *warm(view: View, style: DotStyle, chunk = 1500): Generator<void> {
+  *warm(view: View, style: DotStyle, chunk = 1500, city?: WarmCity): Generator<void> {
     this.useLattice(style);
     const level = drawLevel(zoomLevel(view, style), style).level;
     let n = 0;
@@ -85,14 +94,19 @@ export class DotLayer {
     const dots: { key: number; lon: number; lat: number }[] = [];
     // collect first (cheap), then look up what is missing
     forEachDot(style.lattice, level, view.centre, radius, (d) => {
-      if (!this.cache.has(d.key) || this.missingOverride(d.key, d.lon, d.lat)) dots.push(d);
+      if (!this.cache.has(d.key) || this.missingOverride(d.key, d.lon, d.lat) || (city && this.missingCity(city, d.key, d.lon, d.lat))) dots.push(d);
     });
     yield;
     for (const d of dots) {
       const known = this.cache.get(d.key);
       const base = known ?? this.index.lookup(d.lon, d.lat);
       if (known === undefined) this.cache.set(d.key, base);
-      this.overridden(d.key, d.lon, d.lat, base);
+      const country = this.overridden(d.key, d.lon, d.lat, base);
+      if (city) {
+        // the staged city override and the city's inside test, which the next frames will ask for
+        const staged = this.staged ? this.lookupOverride(this.staged, d.key, d.lon, d.lat, base) : country;
+        if (staged === city.selected) this.isInside(city.inside, d.key, d.lon, d.lat);
+      }
       if (++n % chunk === 0) yield;
     }
   }
@@ -106,6 +120,45 @@ export class DotLayer {
   clearOverride() {
     this.override = null;
     this.overrideCache.clear();
+    this.staged = null;
+  }
+
+  /**
+   * An override that takes effect later (`commitOverride`): `warm` with a `city` fills its cache in the meantime, so the
+   * frame that switches to it does not test every dot at once (~50 ms).
+   */
+  stageOverride(box: { s: number; w: number; n: number; e: number }, fn: (lon: number, lat: number, country: number) => number) {
+    this.staged = { box, fn, cache: new Map() };
+  }
+
+  dropStagedOverride() {
+    this.staged = null;
+  }
+
+  /** Switches to the staged override (with what `warm` has cached for it); false when nothing is staged. */
+  commitOverride(): boolean {
+    const st = this.staged;
+    if (!st) return false;
+    this.override = { box: st.box, fn: st.fn };
+    this.overrideCache = st.cache;
+    this.staged = null;
+    return true;
+  }
+
+  private missingCity(city: WarmCity, key: number, lon: number, lat: number): boolean {
+    const st = this.staged;
+    if (st && lon >= st.box.w && lon <= st.box.e && lat >= st.box.s && lat <= st.box.n && !st.cache.has(key)) return true;
+    return city.inside !== this.insideFn || !this.insideCache.has(key);
+  }
+
+  private lookupOverride(o: Staged, key: number, lon: number, lat: number, country: number): number {
+    if (lon < o.box.w || lon > o.box.e || lat < o.box.s || lat > o.box.n) return country;
+    let c = o.cache.get(key);
+    if (c === undefined) {
+      c = o.fn(lon, lat, country);
+      o.cache.set(key, c);
+    }
+    return c;
   }
 
   private missingOverride(key: number, lon: number, lat: number) {
@@ -124,10 +177,25 @@ export class DotLayer {
     return c;
   }
 
+  /** `inside(lon, lat)`, cached per dot for as long as the same test is passed. */
+  private isInside(inside: NonNullable<DrawOptions["inside"]>, key: number, lon: number, lat: number): boolean {
+    if (inside !== this.insideFn) {
+      this.insideFn = inside;
+      this.insideCache.clear();
+    }
+    let v = this.insideCache.get(key);
+    if (v === undefined) {
+      v = inside(lon, lat);
+      this.insideCache.set(key, v);
+    }
+    return v;
+  }
+
   /** Drops the cache when the lattice changed (its points are different ones). */
   private useLattice(style: DotStyle) {
     if (style.lattice.mode !== this.lattice?.mode || style.lattice.baseDeg !== this.lattice.baseDeg) {
       this.cache.clear();
+      this.insideCache.clear();
       this.lattice = style.lattice;
     }
   }
@@ -177,7 +245,7 @@ export class DotLayer {
       const sx = cx + s * ex;
       const sy = cy - s * ny;
       if (sx < clip.x - r || sx > clip.x + clip.w + r || sy < clip.y - r || sy > clip.y + clip.h + r) return;
-      const g = (country === selected ? (inside?.(lon, lat) ? 4 : 2) : 0) + (dotLevel > k ? 1 : 0);
+      const g = (country === selected ? (inside && this.isInside(inside, key, lon, lat) ? 4 : 2) : 0) + (dotLevel > k ? 1 : 0);
       groups[g]!.push(sx, sy, r * cos, Math.atan2(-ny, ex));
     });
 

@@ -13,6 +13,7 @@ type LocatieserverDoc = {
   weergavenaam?: string;
   centroide_rd?: string;
   nummeraanduiding_id?: string;
+  gemeentenaam?: string;
 };
 
 export function parseGeocode(json: unknown): GeocodeResult | null {
@@ -20,7 +21,7 @@ export function parseGeocode(json: unknown): GeocodeResult | null {
   if (!doc?.centroide_rd || !doc.weergavenaam) return null;
   const point = parseWktPoint(doc.centroide_rd);
   if (!point) return null;
-  return { label: doc.weergavenaam, point, addressId: doc.nummeraanduiding_id };
+  return { label: doc.weergavenaam, point, addressId: doc.nummeraanduiding_id, ...(doc.gemeentenaam ? { municipality: doc.gemeentenaam } : {}) };
 }
 
 export function geocodeUrl(query: string): string {
@@ -28,7 +29,7 @@ export function geocodeUrl(query: string): string {
     q: query,
     rows: "1",
     fq: "type:adres",
-    fl: "weergavenaam,centroide_rd,nummeraanduiding_id",
+    fl: "weergavenaam,centroide_rd,nummeraanduiding_id,gemeentenaam",
   });
   return `${BASE}?${params}`;
 }

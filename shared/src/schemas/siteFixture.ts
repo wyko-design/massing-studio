@@ -9,6 +9,10 @@ export const PlanExcerptSchema = z.object({
 });
 export type PlanExcerpt = z.infer<typeof PlanExcerptSchema>;
 
+/** Link to a plan article whose text the server can fetch (live plan data has no pasted excerpts). */
+export const PlanTextRefSchema = z.object({ title: z.string(), url: z.string().url() });
+export type PlanTextRef = z.infer<typeof PlanTextRefSchema>;
+
 /**
  * Hand-collected site file `data/sites/<id>.json` (SPEC §5). Geometry (bouwvlak, buildingLine)
  * is in RD New metres; the server shifts it to the local frame. See data/sites/README.md.
