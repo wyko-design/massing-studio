@@ -37,6 +37,7 @@ describe("studioLayout", () => {
     expect(height(l.square)).toBeLessThanOrEqual(SQUARE.maxSide);
     expect(width(l.left.panel)).toBe(SQUARE.panelMax);
     expect(width(l.right.panel)).toBe(SQUARE.panelMax);
+    expect(SQUARE.panelMax).toBeLessThan(STUDIO.rulesCols);
   });
 
   it("shrinks the square on a narrow page so the panels keep their minimum width, clear of the logo", () => {
@@ -48,12 +49,20 @@ describe("studioLayout", () => {
     expect(l.square.r0).toBeGreaterThan(l.logo.r1);
   });
 
-  it("moves the square left on the rules screen, the rules window one cell to its right, centred together", () => {
-    const g = computeGrid(1440, 928);
+  it("keeps the square in place on the rules screen when the rules window fits at its right", () => {
+    const g = computeGrid(1920, 1080);
     const l = studioLayout(g);
-    expect(width(l.rulesSquare)).toBe(width(l.square));
+    expect(l.rulesSquare).toEqual(l.square);
     expect(l.rules.panel.c0 - l.rulesSquare.c1).toBe(SQUARE.gap);
     expect(width(l.rules.panel)).toBe(STUDIO.rulesCols);
-    expect(Math.abs(l.rulesSquare.c0 - (g.N - l.rules.panel.c1))).toBeLessThanOrEqual(1);
+    expect(l.rules.panel.c1).toBeLessThanOrEqual(g.N - EDGE_CELLS);
+  });
+
+  it("moves the square left only as far as the rules window needs on a narrower page", () => {
+    const g = computeGrid(1440, 928);
+    const l = studioLayout(g);
+    expect(l.rulesSquare.c0).toBeLessThan(l.square.c0);
+    expect(l.rules.panel.c1).toBe(g.N - EDGE_CELLS);
+    expect(width(l.rulesSquare)).toBe(width(l.square));
   });
 });

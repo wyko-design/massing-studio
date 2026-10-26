@@ -1,9 +1,10 @@
-import { EDGE_CELLS, LAYOUT, SQUARE, modelWindow, type Cells, type Grid } from "../landing/grid";
+import { EDGE_CELLS, LAYOUT, SQUARE, besideRight, modelWindow, type Cells, type Grid } from "../landing/grid";
 
 /**
  * The studio screens on the landing's page grid. Directions and Present: the site model's square in the middle (the
- * landing's model window, unchanged), a panel window at each side, as tall as the square. Rules: the square moves left and
- * the rules window opens at its right, centred together, as the globe and rules windows are on the landing.
+ * landing's model window, unchanged), a narrow panel window at each side, as tall as the square. Rules: the rules window
+ * opens at the square's right and the square stays put, as the globe window does on the landing (it moves left only when
+ * the page is too narrow for both).
  */
 export const STUDIO = {
   /** Rows of the panels' bottom band (the landing's input band). */
@@ -36,9 +37,8 @@ export function studioLayout(g: Grid): StudioLayout {
   const leftC1 = square.c0 - SQUARE.gap;
   const rightC0 = square.c1 + SQUARE.gap;
   const side = square.c1 - square.c0;
-  const pair = side + SQUARE.gap + STUDIO.rulesCols;
-  const p0 = Math.max(EDGE_CELLS, Math.floor((g.N - pair) / 2));
-  const rulesPanel = cells(p0 + side + SQUARE.gap, p0 + pair, r0, r1);
+  const p0 = besideRight(g, square.c0, side, STUDIO.rulesCols);
+  const rulesPanel = cells(p0 + side + SQUARE.gap, p0 + side + SQUARE.gap + STUDIO.rulesCols, r0, r1);
   const { logo } = LAYOUT;
   return {
     logo,

@@ -149,7 +149,7 @@ export type LandingLayout = {
  * reference layout), grows on big pages while both panels keep their full width, and shrinks on narrow ones so the panels
  * keep their minimum width. Its rows stay clear of the logo, since the left panel shares the logo's columns.
  */
-export const SQUARE = { maxSide: 25, panelMin: 11, panelMax: 15, gap: 1, bottomCells: 2 } as const;
+export const SQUARE = { maxSide: 25, panelMin: 11, panelMax: 11, gap: 1, bottomCells: 2 } as const;
 
 /** The site model window: the globe window grown to a square (see SQUARE), centred on the page. It stays the studio's viewport. */
 export function modelWindow(g: Grid, spec: LayoutSpec = LAYOUT): Cells {
@@ -175,12 +175,21 @@ export const lerpBox = (a: BoxStyle, b: BoxStyle, t: number): BoxStyle => ({
 export const PANEL_GAP = 1;
 
 /**
+ * Left column of a window that is centred on its own (`c0`, `cols` wide) once a panel `panelCols` wide opens one cell to
+ * its right: it stays where it is, unless the panel would run past the page's edge strip; then it moves left just enough.
+ */
+export function besideRight(g: Grid, c0: number, cols: number, panelCols: number): number {
+  const over = c0 + cols + PANEL_GAP + panelCols - (g.N - EDGE_CELLS);
+  return Math.max(EDGE_CELLS, c0 - Math.max(0, over));
+}
+
+/**
  * Page-cell layout of the landing screen (reference 1440×928 = 45×29 cells → window at x 480, y 160).
- * `paired`: the rules window is open; the two windows are centred together, so the globe window moves left.
+ * `paired`: the rules window is open at the globe window's right; the globe window stays put (see `besideRight`).
  */
 export function landingLayout(g: Grid, spec: LayoutSpec = LAYOUT, paired = false): LandingLayout {
-  const total = paired ? 2 * spec.windowCols + PANEL_GAP : spec.windowCols;
-  const col = Math.max(0, Math.floor((g.N - total) / 2));
+  const centred = Math.max(0, Math.floor((g.N - spec.windowCols) / 2));
+  const col = paired ? besideRight(g, centred, spec.windowCols, spec.windowCols) : centred;
   const row = Math.max(spec.minRow, Math.floor((g.M - spec.windowRows) / 2));
   const { logo, local } = spec;
   return {

@@ -9,6 +9,7 @@ import {
   landingLayout,
   lerpBox,
   modelWindow,
+  PANEL_GAP,
   lineX,
   lineY,
   snapOrigin,
@@ -155,6 +156,25 @@ describe("landingLayout", () => {
       expect(Math.abs(L.window.c0 - (g.N - L.window.c1))).toBeLessThanOrEqual(1);
       expect(L.window.r1).toBeLessThan(g.M);
     }
+  });
+});
+
+describe("landingLayout paired", () => {
+  it("keeps the globe window where it was and opens the rules window one cell to its right", () => {
+    const g = computeGrid(1920, 1080);
+    const alone = landingLayout(g);
+    const paired = landingLayout(g, undefined, true);
+    expect(paired.window).toEqual(alone.window);
+    expect(paired.panel.c0 - paired.window.c1).toBe(PANEL_GAP);
+  });
+
+  it("moves the globe window left only as far as the page edge needs", () => {
+    const g = computeGrid(1440, 928);
+    const alone = landingLayout(g);
+    const paired = landingLayout(g, undefined, true);
+    expect(paired.window.c0).toBeLessThan(alone.window.c0);
+    expect(paired.panel.c1).toBe(g.N - EDGE_CELLS);
+    expect(paired.window.r0).toBe(alone.window.r0);
   });
 });
 

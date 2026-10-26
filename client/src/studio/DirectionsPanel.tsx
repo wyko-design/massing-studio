@@ -37,6 +37,15 @@ const RULE_ICONS: Record<string, string> = {
   "Inside buildable envelope": areaIcon,
 };
 
+/** Rule names short enough for the narrow panels' title cells (the full name is in the row's tooltip detail). */
+const RULE_SHORT: Record<string, string> = {
+  "Allowed functions": "Functions",
+  "Max building height": "Max height",
+  "Max gutter height": "Max gutter",
+  "Max coverage (0–1)": "Max coverage",
+  "Inside buildable envelope": "In envelope",
+};
+
 const fmt = (x: number, digits = 1) => x.toFixed(digits);
 
 /** The brief, the AI's reading of it, the priorities and the programme. "Interpret brief" is the only call here. */
@@ -296,15 +305,15 @@ function OptionDetails({ id }: { id: OptionId }) {
       <ValueRow icon={heightIcon} label="Roof" value={p.roof === "flat" ? "Flat" : "Pitched"} />
       <Section label="Computed" hint="by code" />
       <ValueRow icon={areaIcon} label="Footprint" value={`${fmt(m.footprint, 0)} m²`} />
-      <ValueRow icon={areaIcon} label="Gross floor area" value={`${fmt(m.gfa, 0)} m²`} />
+      <ValueRow icon={areaIcon} label="GFA" value={`${fmt(m.gfa, 0)} m²`} note={<span className="muted">gross floor area</span>} />
       <ValueRow icon={coverageIcon} label="Coverage" value={fmt(m.coverage, 2)} />
-      <ValueRow icon={farIcon} label="Floor area ratio" value={fmt(m.far, 2)} />
+      <ValueRow icon={farIcon} label="FAR" value={fmt(m.far, 2)} note={<span className="muted">floor area ratio</span>} />
       <ValueRow icon={heightIcon} turned label="Height" value={`${fmt(m.height)} m`} note={`${m.floors} ${m.floors === 1 ? "floor" : "floors"}`} />
       <ValueRow icon={functionsIcon} label="Homes (est.)" value={m.estUnits} note={<span className="muted">target {targetUnits}</span>} />
       <ValueRow icon={subIcon} label="Sun score" value={fmt(m.facadeSunScore, 2)} note={<span className="muted">1 = long sides face south</span>} />
       <Section label="Rules" hint="indicative" />
       {result.compliance.map((c) => (
-        <CheckRow key={c.rule} icon={RULE_ICONS[c.rule]} label={c.rule.replace(" (0–1)", "")} status={c.status} detail={c.detail} />
+        <CheckRow key={c.rule} icon={RULE_ICONS[c.rule]} label={RULE_SHORT[c.rule] ?? c.rule.replace(" (0–1)", "")} status={c.status} detail={c.detail} />
       ))}
       <Section label="Clamps" hint={result.clamps.length ? `${result.clamps.length}` : "none"} />
       <Note small>

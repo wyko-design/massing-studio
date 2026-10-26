@@ -1005,3 +1005,8 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
   - The proposal light is fixed for the south-west view; the Sun look's sun is the landing's graphic north-west sun, not the real date/time.
   - Not checked on macOS / dpr 2; not deployed (nothing committed this pass).
 - **Next:** review by eye; commit and push to master for Render.
+
+## Rules window opens beside the map; narrower studio panels (2026-10-26)
+- **Built:** `besideRight` (`landing/grid.ts`): when the rules window opens, the globe/map window stays where it is and the rules window opens one cell to its right; only when the page is too narrow for both (1440 wide: by 4 cells) the window moves left, just enough. The studio's rules screen does the same with the model's square. Studio side panels are 11 cells wide at every size (`SQUARE.panelMax = 11`; Directions and Present); the square still grows to 25 on big pages. Option panel titles shortened to fit (GFA, FAR, Max height, In envelope…).
+- **Checked:** 440 tests (+3 layout), build. Browser at 1920×1080: address → rules (window left edge 704 px before and after), Start exploring → Directions and Present with 11-cell panels, studio rules screen keeps the square in place.
+- **Open:** at 1440 the map still shifts 4 cells left when the rules open (the pair does not fit otherwise).
