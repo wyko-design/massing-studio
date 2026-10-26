@@ -27,7 +27,7 @@ import setbacksIcon from "./assets/rules/setbacks.svg";
 import subIcon from "./assets/rules/sub.svg";
 import suggestIcon from "./assets/rules/suggest.svg";
 import unknownIcon from "./assets/rules/unknown.svg";
-import { boxStyle, type BoxStyle, type Cells, type Grid, type LandingLayout } from "./grid";
+import { boxStyle, type BoxStyle, type Cells, type Grid } from "./grid";
 import { ShuffleText } from "./ShuffleText";
 import { useLandingStore } from "./landingStore";
 import { shortAddress } from "./geoApi";
@@ -96,13 +96,32 @@ const fmt = (n: number) => String(Math.round(n * 1000) / 1000);
 
 const STATE_WORDS: Record<State, string> = { known: "KNOWN", unknown: "UNKNOWN" };
 
-/** The plot chip of the header: parcel number and area. */
-function plotChip(plot: PlotData | null): string {
-  if (!plot) return "Plot";
-  if (!plot.parcel) return "Plot # unknown";
-  const number = plot.parcel.id.split(" ").pop() || "unknown";
-  const area = plot.parcel.areaM2;
+/** The plot chip of the header: parcel number and area (the landing's plot, else the loaded scene's parcel). */
+function plotChip(plot: PlotData | null, parcel: { id: string; areaM2: number } | null): string {
+  const source = plot ? plot.parcel : parcel;
+  if (!source) return plot ? "Plot # unknown" : "Plot";
+  const number = source.id.split(" ").pop() || "unknown";
+  const area = source.areaM2;
   return `Plot #${number} · ${area === null ? "area unknown" : `${Math.round(area)}m²`}`;
+}
+
+/**
+ * What the header of the rules window (and of the studio's panels) shows about the site: the plot chip, and the address
+ * as two lines ("Jan de Oudeweg 162" and "2628 SJ Delft, NL"; the second never breaks). From the landing's choices, or,
+ * when the studio was opened directly, from the loaded scene.
+ */
+export function useSiteHeader(): { chip: string; street: string; place: string } {
+  const address = useLandingStore((s) => s.address);
+  const city = useLandingStore((s) => s.city);
+  const plot = useLandingStore((s) => s.plot);
+  const parcel = useSiteStore((s) => s.scene?.parcel ?? null);
+  const sceneAddress = useSiteStore((s) => s.address);
+  const label = address?.label ?? sceneAddress;
+  const short = label ? shortAddress(label) : "";
+  const post = /, (\d{4}) ?([A-Z]{2})$/.exec(short);
+  const street = post ? short.slice(0, post.index) : short;
+  const place = [post ? `${post[1]} ${post[2]}` : "", [city?.name, city?.cc].filter(Boolean).join(", ")].filter(Boolean).join(" ");
+  return { chip: plotChip(plot, parcel), street, place };
 }
 
 /** `suggested`: filled by "Fill with suggested values", not yet typed or read from a plan. */
@@ -506,11 +525,21 @@ function SetbacksRows({ idx, constraints }: { idx: number; constraints: SiteCons
   );
 }
 
+type RulesPanelProps = {
+  grid: Grid;
+  /** The window and its bottom band, in page cells. */
+  layout: { panel: Cells; panelBand: Cells };
+  /** The studio's use: where the arrow and the back arrow lead (on the landing: the site model, one step back on the globe). */
+  onContinue?: () => void;
+  continueLabel?: string;
+  onBack?: () => void;
+  /** Show the table at once, without the reveal (the rules were read before). */
+  instant?: boolean;
+};
+
 /** Rules window (UI-2): opens right of the globe window once the plot step's arrow is clicked. Known rules read-only, missing ones as inputs. */
-export function RulesPanel({ grid, layout }: { grid: Grid; layout: LandingLayout }) {
+export function RulesPanel({ grid, layout, onContinue, continueLabel = "Start exploring", onBack, instant = false }: RulesPanelProps) {
   const address = useLandingStore((s) => s.address);
-  const city = useLandingStore((s) => s.city);
-  const plot = useLandingStore((s) => s.plot);
   const loading = useSiteStore((s) => s.loading);
   const error = useSiteStore((s) => s.error);
   const fillPlaceholders = useSiteStore((s) => s.fillPlaceholders);
@@ -541,12 +570,14 @@ export function RulesPanel({ grid, layout }: { grid: Grid; layout: LandingLayout
   const required = useMemo(() => CONSTRAINT_FIELDS.filter((f) => isInput(f) && shown(f.path)), [added]); // eslint-disable-line react-hooks/exhaustive-deps
   const missing = required.filter((f) => (getField(sc, f.path)?.value ?? null) === null);
   const complete = !!constraints && missing.length === 0;
-  const ready = asked && !loading && !!constraints;
+  // opened without an address (the studio's default site): the loaded scene is the one to show
+  const ready = (asked || !label) && !loading && !!constraints;
 
   // the reveal: once the data is in, one more row every STAGGER_MS; the count line is last
   // revealed: the header, band and left column fade in; rowsOn: the rows may start their turns (after that fade)
-  const [revealed, setRevealed] = useState(reducedMotion);
-  const [rowsOn, setRowsOn] = useState(reducedMotion);
+  const quick = instant || reducedMotion();
+  const [revealed, setRevealed] = useState(quick);
+  const [rowsOn, setRowsOn] = useState(quick);
   useEffect(() => {
     if (revealed) return;
     const id = setTimeout(() => setRevealed(true), SHIMMER_MS);
@@ -560,14 +591,14 @@ export function RulesPanel({ grid, layout }: { grid: Grid; layout: LandingLayout
   const [stage, setStage] = useState(0);
   useEffect(() => {
     if (!ready || !rowsOn) return setStage(0);
-    if (reducedMotion()) return setStage(Number.POSITIVE_INFINITY);
+    if (quick) return setStage(Number.POSITIVE_INFINITY);
     let k = 0;
     const id = setInterval(() => {
       setStage(++k);
       if (k >= STAGES + RESOLVE_TICKS) clearInterval(id);
     }, STAGGER_MS);
     return () => clearInterval(id);
-  }, [ready, rowsOn]);
+  }, [ready, rowsOn, quick]);
   // the count line does not scramble: it fades in once the last row has unscrambled
   const countShown = stage >= STAGES + RESOLVE_TICKS;
 
@@ -577,11 +608,7 @@ export function RulesPanel({ grid, layout }: { grid: Grid; layout: LandingLayout
     fillPlaceholders(values);
   };
 
-  // "Jan de Oudeweg 162, 2628SJ" → "Jan de Oudeweg 162" and "2628 SJ Delft, NL"; the second line never breaks
-  const short = label ? shortAddress(label) : "";
-  const post = /, (\d{4}) ?([A-Z]{2})$/.exec(short);
-  const street = post ? short.slice(0, post.index) : short;
-  const place = [post ? `${post[1]} ${post[2]}` : "", [city?.name, city?.cc].filter(Boolean).join(", ")].filter(Boolean).join(" ");
+  const { chip, street, place } = useSiteHeader();
 
   // everything sits in one box, the window's, so that it can grow from its left edge as a whole
   const win = boxStyle(grid, layout.panel);
@@ -613,10 +640,10 @@ export function RulesPanel({ grid, layout }: { grid: Grid; layout: LandingLayout
             and limits
           </h2>
           <div className="rules-details">
-            <span className="rules-chip t-semimono">{plotChip(plot)}</span>
+            <span className="rules-chip t-semimono">{chip}</span>
             <div className="rules-where">
               {/* the same grey arrow as in the input band, one cell, centred on the blue address */}
-              <button type="button" className="rules-back" aria-label="Back" disabled={phase !== "plot" || model !== "off"} onClick={back}>
+              <button type="button" className="rules-back" aria-label="Back" disabled={onBack ? false : phase !== "plot" || model !== "off"} onClick={onBack ?? back}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
                   <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
                   <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
@@ -670,8 +697,8 @@ export function RulesPanel({ grid, layout }: { grid: Grid; layout: LandingLayout
         <img src={suggestIcon} alt="" width={12} height={12} />
       </button>
       {/* The arrow turns blue once every rule has a value; it opens the site model. */}
-      <button type="button" className={`box go rules-go${complete ? " ready" : ""}`} style={goBox} aria-disabled={!complete} aria-label={complete ? "Start exploring" : "Continue"} onClick={() => complete && openModel()}>
-        {complete && <span className="go-label t-semimono">Start exploring</span>}
+      <button type="button" className={`box go rules-go${complete ? " ready" : ""}`} style={goBox} aria-disabled={!complete} aria-label={complete ? continueLabel : "Continue"} onClick={() => complete && (onContinue ?? openModel)()}>
+        {complete && <span className="go-label t-semimono">{continueLabel}</span>}
         <img src={arrowUrl} alt="" />
       </button>
     </div>

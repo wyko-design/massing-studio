@@ -1,17 +1,32 @@
+import { TOKENS } from "../landing/tokens";
+
 /** Context colours per style. */
-export const CONTEXT_STYLES = { white: "#f7f7f5", grey: "#cfcfcb" } as const;
+export const CONTEXT_STYLES = { white: TOKENS.white, grey: "#E5E5E5" } as const;
 export type ContextStyle = keyof typeof CONTEXT_STYLES;
+
+/**
+ * The two looks. "lines": the landing's site-model drawing (flat white context with grey edges, no shadows, blue plot),
+ * the proposal the only shaded mass. "sun": the same colours, lit by the real sun with shadows and ambient occlusion.
+ */
+export const LOOKS = { lines: "Lines", sun: "Sun" } as const;
+export type LookId = keyof typeof LOOKS;
+
+/** Building edges of the line look: the site model's line grey (globeStyle.plot.waterLine). */
+const EDGE = "#DFDFDF";
 
 /**
  * Every parameter of the presentation look in one place (SPEC §10).
  * The Present screen edits it through `presentStore`; every screen renders with it.
  */
 export type RenderStyle = {
+  look: LookId;
   /** Also the ground colour, so the ground never shows an edge or horizon. */
   background: string;
   parcelColour: string;
-  /** White or grey matte context; hatched is a P11 item. */
-  context: { style: ContextStyle };
+  /** Outline and dots of the plot (line look). */
+  parcelLine: string;
+  /** White or grey matte context; hatched is a P11 item. `edges`: edge colour in the line look. */
+  context: { style: ContextStyle; edges: string };
   proposal: { colour: string; outlineColour: string; outlineWidth: number };
   /** Ghost of the buildable envelope: faint fill, dashed edges. Never casts shadows. */
   envelope: { visible: boolean; fillColour: string; fillOpacity: number; lineColour: string; lineWidth: number; dashed: boolean };
@@ -55,11 +70,13 @@ export type RenderStyle = {
 };
 
 export const defaultRenderStyle: RenderStyle = {
-  background: "#e6e6e3",
-  parcelColour: "#dcdcd8",
-  context: { style: "white" },
-  proposal: { colour: "#c23350", outlineColour: "#111111", outlineWidth: 2 },
-  envelope: { visible: true, fillColour: "#5b6b8c", fillOpacity: 0.08, lineColour: "#3a4560", lineWidth: 1.2, dashed: true },
+  look: "lines",
+  background: TOKENS.background,
+  parcelColour: TOKENS.white,
+  parcelLine: TOKENS.blue,
+  context: { style: "white", edges: EDGE },
+  proposal: { colour: TOKENS.blue, outlineColour: TOKENS.white, outlineWidth: 1 },
+  envelope: { visible: true, fillColour: TOKENS.blue, fillOpacity: 0.06, lineColour: TOKENS.blue, lineWidth: 1, dashed: true },
   light: {
     date: "2026-09-21T09:30:00+02:00",
     sunIntensity: 2.2,
@@ -69,7 +86,7 @@ export const defaultRenderStyle: RenderStyle = {
     ambientIntensity: 0.15,
     shadowSoftness: 6,
     shadowMapSize: 4096,
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
   },
   ao: {
     enabled: true,
@@ -80,12 +97,13 @@ export const defaultRenderStyle: RenderStyle = {
     quality: "high",
   },
   labels: {
-    font: '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace',
+    font: '"ABC Areal", "Helvetica Neue", Arial, sans-serif',
     fontSize: 13,
-    colour: "#111111",
-    haloColour: "rgba(255,255,255,0.75)",
-    tagBackground: "#111111",
-    tagColour: "#ffffff",
+    colour: TOKENS.black,
+    haloColour: "rgba(255,255,255,0.8)",
+    tagBackground: TOKENS.blue,
+    tagColour: TOKENS.white,
   },
-  camera: { elevation: 42, azimuth: 210, zoom: 7 },
+  // the landing's site model: true isometric from the south-west
+  camera: { elevation: 35.26, azimuth: 225, zoom: 7 },
 };

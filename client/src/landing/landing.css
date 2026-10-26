@@ -1024,16 +1024,20 @@
   color: var(--white);
 }
 
-/* leaves the landing for the studio's Directions screen (bottom right inside the model window) */
+/* leaves the landing for the studio's Directions screen: the rules window's labelled arrow, on the grid inside the model window */
 .landing .site-next {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  height: 20px;
-  padding: 0 8px;
-  border: 1px solid var(--blue);
-  background: var(--blue);
-  color: var(--white);
-  font: inherit;
-  cursor: pointer;
+  z-index: 2;
+  animation: site-next-in 450ms cubic-bezier(0.645, 0.045, 0.355, 1) backwards;
+}
+
+@keyframes site-next-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .site-next {
+    animation: none;
+  }
 }

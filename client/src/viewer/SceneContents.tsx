@@ -1,11 +1,12 @@
 import { useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
 import { pointInRing, type Envelope, type SiteScene, type Volume } from "@massing/shared";
 import { CONTEXT_STYLES, type RenderStyle } from "./renderStyle";
 import { ringBounds } from "./geometry";
 import { Sun } from "./Sun";
 import { Ground, Parcel } from "./Ground";
 import { ContextModel } from "./ContextModel";
-import { ProposalVolume } from "./ProposalVolume";
+import { ProposalLight, ProposalVolume } from "./ProposalVolume";
 import { Effects } from "./Effects";
 import { EnvelopeGhost } from "./EnvelopeGhost";
 
@@ -16,6 +17,15 @@ export type SceneProps = {
   proposal?: Volume[];
   style: RenderStyle;
 };
+
+/**
+ * Draws the frame itself. The label layer (priority 2) takes the render loop over from R3F; in the sun look the effect
+ * composer then renders, in the line look (no composer) this does, before the labels.
+ */
+function RenderPass() {
+  useFrame(({ gl, scene, camera }) => gl.render(scene, camera), 1);
+  return null;
+}
 
 /** Everything inside the Canvas except the camera: shared by the on-screen viewer and the export render. */
 export function SceneContents({ scene, envelope, proposal: proposalProp, style }: SceneProps) {
@@ -41,17 +51,19 @@ export function SceneContents({ scene, envelope, proposal: proposalProp, style }
       maxHeight: Math.max(0, ...heights),
     };
   }, [scene, proposal]);
+  const sun = style.look === "sun";
 
   return (
     <>
       <color attach="background" args={[style.background]} />
-      <Sun style={style.light} origin={scene.origin} sceneRadius={sceneRadius} maxHeight={maxHeight} />
-      <Ground colour={style.background} shadowOpacity={style.light.shadowOpacity} />
-      <Parcel ring={scene.parcel.ring} colour={style.parcelColour} shadowOpacity={style.light.shadowOpacity} />
-      <ContextModel buildings={context} colour={CONTEXT_STYLES[style.context.style]} />
-      {proposal && <ProposalVolume volumes={proposal} style={style.proposal} />}
+      {sun ? <Sun style={style.light} origin={scene.origin} sceneRadius={sceneRadius} maxHeight={maxHeight} /> : <ProposalLight />}
+      <Ground colour={style.background} shadowOpacity={style.light.shadowOpacity} shadows={sun} />
+      <Parcel ring={scene.parcel.ring} colour={style.parcelColour} line={style.parcelLine} shadowOpacity={style.light.shadowOpacity} look={style.look} />
+      <ContextModel buildings={context} colour={CONTEXT_STYLES[style.context.style]} edges={style.context.edges} look={style.look} />
+      {proposal && <ProposalVolume volumes={proposal} style={style.proposal} look={style.look} />}
       {envelope && style.envelope.visible && <EnvelopeGhost envelope={envelope} style={style.envelope} />}
-      <Effects ao={style.ao} />
+      {/* the line look is flat: no ambient occlusion, no composer */}
+      {sun ? <Effects ao={style.ao} /> : <RenderPass />}
     </>
   );
 }

@@ -19,6 +19,8 @@ import { RulesPanel } from "./RulesPanel";
 import { ShuffleText } from "./ShuffleText";
 import { useGrid } from "./useGrid";
 import { perfOn } from "./perf";
+import arrowUrl from "./assets/arrow.svg";
+import { DIRECTIONS_HASH } from "../routes";
 import { PerfHud } from "./PerfHud";
 
 // the site model (three.js) loads only when it is needed; RulesPanel preloads it
@@ -160,7 +162,16 @@ export function Landing() {
     // the model square covers the whole 2D view at the hand-over (a little extra for rounding)
     return { pxPerM, level, fade };
   }, [plot, panelOpen, from.width, from.height]);
-  const finalBox = boxStyle(grid, modelWindow(grid));
+  const finalCells = modelWindow(grid);
+  const finalBox = boxStyle(grid, finalCells);
+  // the model can be turned: the arrow to the studio's Directions shows (its code is loaded while the model animates)
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    if (model !== "on") return setLive(false);
+    void import("../App");
+  }, [model]);
+  // the arrow: one row high, five cells wide, one cell in from the model window's bottom-right corner
+  const nextBox = boxStyle(grid, { c0: finalCells.c1 - 6, c1: finalCells.c1 - 1, r0: finalCells.r1 - 2, r1: finalCells.r1 - 1 });
   const hookTop = lineY(grid, layout.hookRow);
   const hidden = phase !== "idle" && phase !== "toIdle";
 
@@ -196,6 +207,7 @@ export function Landing() {
               start={modelStart === null ? null : modelStart + modelStyle.windowMs}
               reducedMotion={reducedMotion}
               onReady={modelReady}
+              onLive={() => setLive(true)}
             />
           </Suspense>
         )}
@@ -209,6 +221,12 @@ export function Landing() {
           </p>
         </div>
 
+        {live && model === "on" && (
+          <button type="button" className="box go rules-go ready site-next" style={nextBox} aria-label="Directions" onClick={() => (window.location.hash = DIRECTIONS_HASH)}>
+            <span className="go-label t-semimono">Directions</span>
+            <img src={arrowUrl} alt="" />
+          </button>
+        )}
         {!panelOpen && <div className="box input-band" style={boxStyle(grid, layout.inputBand)} />}
         <CountryInput grid={grid} layout={layout} />
         {panelOpen && modelT < 1 && (

@@ -1,17 +1,22 @@
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import type { ReportModel } from "./model";
+import { TOKENS } from "../landing/tokens";
 
 /** Rendered images for the report as JPEG bytes. */
 export type ReportImages = { cover: Uint8Array; options: Uint8Array[] };
 
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 48;
-const INK = rgb(0.07, 0.07, 0.07);
-const MUTED = rgb(0.4, 0.4, 0.4);
-const RULE = rgb(0.8, 0.8, 0.8);
+/** The app's colour tokens (landing/tokens.ts): black #5B5B5B for text, stroke #BCBCBC for rules, blue #1447C6 for what needs attention. */
+const hex = (h: string) => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255);
+const INK = hex(TOKENS.black);
+const MUTED = rgb(0.55, 0.55, 0.55);
+const RULE = hex(TOKENS.stroke);
+const BLUE = hex(TOKENS.blue);
+const SHADE = hex(TOKENS.background);
 const STATUS_COLOURS: Record<string, ReturnType<typeof rgb>> = {
-  pass: rgb(0.09, 0.36, 0.15),
-  fail: rgb(0.54, 0.08, 0.14),
+  pass: INK,
+  fail: BLUE,
   unknown: MUTED,
 };
 
@@ -137,7 +142,7 @@ class Writer {
         this.newPage();
         if (!bold) drawRow(headers, true, true);
       }
-      if (shade) this.page.drawRectangle({ x: MARGIN, y: this.y - h, width: this.width, height: h, color: rgb(0.94, 0.94, 0.93) });
+      if (shade) this.page.drawRectangle({ x: MARGIN, y: this.y - h, width: this.width, height: h, color: SHADE });
       let x = MARGIN;
       wrapped.forEach((lines, i) => {
         const colour = !bold && i === o.statusColumn ? (STATUS_COLOURS[cells[i]!] ?? INK) : INK;
@@ -176,8 +181,8 @@ function decorate(w: Writer, model: ReportModel) {
         y: A4[1] / 2 - (width / 2) * Math.sin(rad) - (size * 0.35) * Math.cos(rad),
         size,
         font: w.bold,
-        color: rgb(0.07, 0.07, 0.07),
-        opacity: 0.07,
+        color: BLUE,
+        opacity: 0.08,
         rotate: degrees(angle),
       });
     }
@@ -187,7 +192,7 @@ function decorate(w: Writer, model: ReportModel) {
     page.drawText(right, { x: A4[0] - MARGIN - w.regular.widthOfTextAtSize(right, 7.5), y: 28, size: 7.5, font: w.regular, color: MUTED });
     if (model.placeholder) {
       const tag = "PLACEHOLDER DATA: planning values are assumed";
-      page.drawText(tag, { x: MARGIN, y: 17, size: 7.5, font: w.bold, color: rgb(0.54, 0.08, 0.14) });
+      page.drawText(tag, { x: MARGIN, y: 17, size: 7.5, font: w.bold, color: BLUE });
     }
   });
 }

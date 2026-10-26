@@ -1,0 +1,225 @@
+{
+  "ok": true,
+  "data": {
+    "options": [
+      {
+        "id": "A",
+        "name": "Tall Street Slab",
+        "intent": "A tall, simple bar along the street edge that pushes height to the limit to fit as many homes as the rules allow. Serves homes and buildability.",
+        "tradeOffs": [
+          "Highest presence next to neighbours",
+          "Little daylight on the street side",
+          "Less open space on the plot"
+        ],
+        "params": {
+          "typology": "slab",
+          "floors": 4,
+          "groundFloorHeight": 3.5,
+          "floorHeight": 3,
+          "depth": 7,
+          "alignment": "street",
+          "coverageTarget": 0.6,
+          "roof": "flat",
+          "colour": "#c23350"
+        },
+        "clamps": [
+          "Coverage target 0.60 reached 0.40: a slab 7 m deep fits at most 45 m² in the 71 m² envelope.",
+          "Asked for 4 floors; max FAR 1.50 (assumed) allows 3 (GFA 134 m² on a 111 m² parcel)."
+        ],
+        "metrics": {
+          "footprint": 44.80601505533645,
+          "gfa": 134.41804516600936,
+          "far": 1.2109733798739581,
+          "coverage": 0.4036577932913194,
+          "height": 9.5,
+          "floors": 3,
+          "estUnits": 1,
+          "facadeSunScore": 0.49609995198407564
+        },
+        "compliance": [
+          {
+            "rule": "Allowed functions",
+            "status": "pass",
+            "detail": "Residential fits \"Wonen\" (assumed)"
+          },
+          {
+            "rule": "Max building height",
+            "status": "pass",
+            "detail": "9.5 m ≤ 15 m (assumed)"
+          },
+          {
+            "rule": "Max gutter height",
+            "status": "unknown",
+            "detail": "Rule unknown; the massing has 9.5 m."
+          },
+          {
+            "rule": "Max coverage (0–1)",
+            "status": "pass",
+            "detail": "0.40 ≤ 0.60 (assumed)"
+          },
+          {
+            "rule": "Max FAR",
+            "status": "pass",
+            "detail": "1.21 ≤ 1.50 (assumed)"
+          },
+          {
+            "rule": "Parking norm",
+            "status": "unknown",
+            "detail": "Needs 1 spaces (1 units × 0.6/unit, assumed); parking is not modelled."
+          },
+          {
+            "rule": "Inside buildable envelope",
+            "status": "pass",
+            "detail": "Inside the setbacks envelope (assumed)"
+          }
+        ]
+      },
+      {
+        "id": "B",
+        "name": "Sunlit L-Block",
+        "intent": "An L-shaped building turned toward the sun, with a mid-rise body that leaves a sheltered open corner of the plot. Balances daylight and open space against home count.",
+        "tradeOffs": [
+          "Fewer homes than the tallest option",
+          "More complex to build",
+          "Wings may shade each other"
+        ],
+        "params": {
+          "typology": "l_block",
+          "floors": 3,
+          "groundFloorHeight": 3.2,
+          "floorHeight": 2.9,
+          "depth": 5.5,
+          "alignment": "sun",
+          "coverageTarget": 0.45,
+          "roof": "flat",
+          "colour": "#2f6fb0"
+        },
+        "clamps": [],
+        "metrics": {
+          "footprint": 49.83446613197792,
+          "gfa": 149.50339839593374,
+          "far": 1.3468774630264302,
+          "coverage": 0.4489591543421434,
+          "height": 9,
+          "floors": 3,
+          "estUnits": 1,
+          "facadeSunScore": 0.5623504334456788
+        },
+        "compliance": [
+          {
+            "rule": "Allowed functions",
+            "status": "pass",
+            "detail": "Residential fits \"Wonen\" (assumed)"
+          },
+          {
+            "rule": "Max building height",
+            "status": "pass",
+            "detail": "9 m ≤ 15 m (assumed)"
+          },
+          {
+            "rule": "Max gutter height",
+            "status": "unknown",
+            "detail": "Rule unknown; the massing has 9 m."
+          },
+          {
+            "rule": "Max coverage (0–1)",
+            "status": "pass",
+            "detail": "0.45 ≤ 0.60 (assumed)"
+          },
+          {
+            "rule": "Max FAR",
+            "status": "pass",
+            "detail": "1.35 ≤ 1.50 (assumed)"
+          },
+          {
+            "rule": "Parking norm",
+            "status": "unknown",
+            "detail": "Needs 1 spaces (1 units × 0.6/unit, assumed); parking is not modelled."
+          },
+          {
+            "rule": "Inside buildable envelope",
+            "status": "pass",
+            "detail": "Inside the setbacks envelope (assumed)"
+          }
+        ]
+      },
+      {
+        "id": "C",
+        "name": "Low Quiet Bar",
+        "intent": "A low, compact bar with a pitched roof that blends with the neighbouring buildings and frees most of the plot as open ground. Serves fit with the surroundings and simplicity.",
+        "tradeOffs": [
+          "Far fewer homes",
+          "Programme target clearly missed",
+          "Pitched roof adds cost"
+        ],
+        "params": {
+          "typology": "slab",
+          "floors": 2,
+          "groundFloorHeight": 3,
+          "floorHeight": 2.8,
+          "depth": 6,
+          "alignment": "sun",
+          "coverageTarget": 0.35,
+          "roof": "pitched",
+          "colour": "#d98a1f"
+        },
+        "clamps": [],
+        "metrics": {
+          "footprint": 38.7115840912554,
+          "gfa": 77.4231681825108,
+          "far": 0.6975060196622596,
+          "coverage": 0.3487530098311298,
+          "height": 8.31729889353184,
+          "floors": 2,
+          "estUnits": 0,
+          "facadeSunScore": 0.5697651176020335
+        },
+        "compliance": [
+          {
+            "rule": "Allowed functions",
+            "status": "pass",
+            "detail": "Residential fits \"Wonen\" (assumed)"
+          },
+          {
+            "rule": "Max building height",
+            "status": "pass",
+            "detail": "8.3 m ≤ 15 m (assumed)"
+          },
+          {
+            "rule": "Max gutter height",
+            "status": "unknown",
+            "detail": "Rule unknown; the massing has 5.8 m."
+          },
+          {
+            "rule": "Max coverage (0–1)",
+            "status": "pass",
+            "detail": "0.35 ≤ 0.60 (assumed)"
+          },
+          {
+            "rule": "Max FAR",
+            "status": "pass",
+            "detail": "0.70 ≤ 1.50 (assumed)"
+          },
+          {
+            "rule": "Parking norm",
+            "status": "unknown",
+            "detail": "Needs 0 spaces (0 units × 0.6/unit, assumed); parking is not modelled."
+          },
+          {
+            "rule": "Inside buildable envelope",
+            "status": "pass",
+            "detail": "Inside the setbacks envelope (assumed)"
+          }
+        ]
+      }
+    ],
+    "warnings": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "strategyGenerator.v1",
+    "attempts": 1,
+    "costUsd": 0.020996,
+    "cached": false
+  }
+}

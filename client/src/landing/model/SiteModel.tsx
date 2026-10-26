@@ -14,7 +14,6 @@ import { perfCall, timed } from "../perf";
 import { buildingGeometries, edgePoints, prism, shapeOf, type BuildingArrays } from "./buildingGeometry";
 import { envelopeRings, type ModelData, type Poly, type XY } from "./modelData";
 import { modelGraph, prepareModelAsync } from "./modelJobs";
-import { DIRECTIONS_HASH } from "../../routes";
 import type { PreparedModel } from "./modelWork";
 import { moverPose, spawnMover, stepMover, type Graph, type Mover } from "./movers";
 import { LOOKS, modelStyle as S, sequence, viewLimits, type Look } from "./modelStyle";
@@ -48,6 +47,8 @@ export type SiteModelProps = {
   reducedMotion: boolean;
   /** The first frame is on screen: the hand-over can start. */
   onReady: () => void;
+  /** The camera has landed and the model can be turned: the next step's button may show. */
+  onLive?: () => void;
 };
 
 type Clock = { elapsed: () => number };
@@ -563,7 +564,7 @@ export default function SiteModel(props: SiteModelProps) {
 }
 
 function ModelView(props: SiteModelProps & { half: number; model: ModelData; buildings: BuildingArrays }) {
-  const { plot, box, dpr, startPxPerM, dotFade, finalSize, envelope, origin, start, reducedMotion, onReady, half, model, buildings } = props;
+  const { plot, box, dpr, startPxPerM, dotFade, finalSize, envelope, origin, start, reducedMotion, onReady, onLive, half, model, buildings } = props;
   const ghost = useMemo(() => (envelope && origin ? envelopeRings(envelope, origin, model.local).filter((r) => r.length >= 3) : []), [envelope, origin, model]);
   const times = useMemo(() => sequence(ghost.length > 0), [ghost.length]);
   const startRef = useRef(start);
@@ -585,10 +586,6 @@ function ModelView(props: SiteModelProps & { half: number; model: ModelData; bui
     }
   });
   const look = LOOKS.find((l) => l.id === lookId) ?? LOOKS[0]!;
-  // the last landing screen: hand the loaded site and rules over to the studio's Directions screen
-  const openDirections = () => {
-    window.location.hash = DIRECTIONS_HASH;
-  };
   const pickLook = (id: string) => {
     setLookId(id);
     try {
@@ -648,7 +645,15 @@ function ModelView(props: SiteModelProps & { half: number; model: ModelData; bui
         camera={{ position: [0, 2000, 0.001], up: [0, 0, -1], zoom: startPxPerM, near: 1, far: 6000 }}
       >
         {compiled ? <FirstFrame onReady={onReady} /> : <Precompile onDone={onCompiled} />}
-        <Rig clock={clock} startZoom={startPxPerM} endZoom={limits.endZoom} onDone={() => setOrbit(true)} />
+        <Rig
+          clock={clock}
+          startZoom={startPxPerM}
+          endZoom={limits.endZoom}
+          onDone={() => {
+            setOrbit(true);
+            onLive?.();
+          }}
+        />
         <Flat polys={ground} fill={S.colours.ground} order={-20} />
         <Flat polys={model.water} fill={S.colours.waterFill} line={S.colours.waterLine} order={-16} />
         <Flat polys={model.road} fill={S.colours.roadFill} line={S.colours.roadLine} order={-14} />
@@ -677,11 +682,6 @@ function ModelView(props: SiteModelProps & { half: number; model: ModelData; bui
             </button>
           ))}
         </div>
-      )}
-      {orbit && (
-        <button type="button" className="site-next t-semimono t-label" onClick={openDirections}>
-          Directions
-        </button>
       )}
     </div>
   );

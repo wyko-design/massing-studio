@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useMassingStore, type OptionId } from "./massingStore";
-import { defaultRenderStyle, type RenderStyle } from "../viewer/renderStyle";
+import { defaultRenderStyle, type LookId, type RenderStyle } from "../viewer/renderStyle";
 import { cameraHandle } from "../viewer/cameraHandle";
 import { convertView, presetView, type Focus, type Preset, type Projection, type View } from "../present/camera";
 import type { Aspect, Multiplier } from "../present/frame";
@@ -43,6 +43,8 @@ type PresentState = {
   job: ExportJob | null;
   exportState: ExportState;
   setStyle: <K extends keyof RenderStyle>(key: K, patch: Partial<RenderStyle[K]>) => void;
+  /** Lines (the site model's drawing) or sun (shadows, ambient occlusion). */
+  setLook: (look: LookId) => void;
   setProjectionState: (projection: Projection) => void;
   /** Switch projection keeping the framing. */
   switchProjection: (projection: Projection) => void;
@@ -72,6 +74,7 @@ export const usePresentStore = create<PresentState>()((set, get) => ({
   job: null,
   exportState: { status: "idle" },
   setStyle: (key, patch) => set((s) => ({ style: { ...s.style, [key]: { ...(s.style[key] as object), ...patch } } })),
+  setLook: (look) => set((s) => ({ style: { ...s.style, look } })),
   setProjectionState: (projection) => set({ projection }),
   switchProjection: (projection) => {
     const h = cameraHandle();

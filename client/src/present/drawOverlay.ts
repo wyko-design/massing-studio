@@ -174,7 +174,7 @@ function drawWatermark(ctx: CanvasRenderingContext2D, frame: FrameSize, s: Label
   ctx.font = font(s, Math.round(Math.min(frame.width, frame.height) * 0.085), 600);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(17,17,17,0.13)";
+  ctx.fillStyle = "rgba(20,71,198,0.12)"; // the blue token, faint
   ctx.fillText("PLACEHOLDER DATA", 0, 0);
   ctx.restore();
 
@@ -182,9 +182,9 @@ function drawWatermark(ctx: CanvasRenderingContext2D, frame: FrameSize, s: Label
   ctx.font = font(s, s.fontSize, 600);
   const w = ctx.measureText(text).width + 2 * TAG_PAD_X;
   const h = s.fontSize * LINE_GAP + 2 * TAG_PAD_Y;
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = s.tagBackground;
   ctx.fillRect(frame.width - MARGIN - w, MARGIN, w, h);
-  ctx.fillStyle = "#ffd24d";
+  ctx.fillStyle = s.tagColour;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(text, frame.width - MARGIN - w + TAG_PAD_X, MARGIN + h / 2);

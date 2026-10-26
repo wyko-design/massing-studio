@@ -1,0 +1,776 @@
+/*
+ * Studio screens (rules, Directions, Present) in the landing's language. The root carries both `.landing` (so the landing's
+ * type styles, windows, bands, rules table, tags and arrow apply) and `.studio` for what is added here. Colours only via
+ * the token custom properties (tokens.ts); the two greys of the rules table (#d8d8d8 chips, #e5e5e5 sub-rows) as there.
+ */
+
+/* ---- viewer window ---- */
+.landing.studio .viewer-canvas {
+  position: absolute;
+  overflow: hidden;
+  transition: opacity 300ms linear;
+}
+
+.landing.studio .viewer-canvas.waiting {
+  opacity: 0;
+}
+
+/* Present: the design frame sits on the page background, inside the viewer window */
+.landing.studio .viewer-canvas.framing {
+  background: var(--background);
+}
+
+.landing.studio .viewer-frame {
+  position: absolute;
+  outline: 1px solid var(--stroke);
+  background: var(--white);
+}
+
+.landing.studio .viewer-tools {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 4px;
+}
+
+.landing.studio .viewer-tools button {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--stroke);
+  background: var(--white);
+  color: var(--black);
+  font-size: 10px;
+  line-height: 18px;
+  letter-spacing: -0.1px;
+  cursor: pointer;
+}
+
+.landing.studio .viewer-tools button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.landing.studio .viewer-tools button[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--white);
+}
+
+.landing.studio .viewer-flag {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+}
+
+.landing.studio .viewer-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
+}
+
+/* the band's option buttons: one grid row high, adjoining (their borders share the grid lines) */
+.landing.studio .option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 7px;
+  border: 1px solid var(--stroke);
+  background: var(--background);
+  color: var(--black);
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+}
+
+.landing.studio .option .option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing.studio .option .chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  background: #d8d8d8;
+  font-size: 10px;
+  letter-spacing: -0.1px;
+  color: var(--black);
+}
+
+.landing.studio .option:hover {
+  color: var(--blue);
+}
+
+.landing.studio .option[aria-pressed="true"] {
+  z-index: 1; /* its blue border wins over the neighbours' grey on the shared line */
+  border-color: var(--blue);
+  background: var(--white);
+  color: var(--blue);
+}
+
+.landing.studio .option[aria-pressed="true"] .chip {
+  background: var(--blue);
+  color: var(--white);
+}
+
+.landing.studio .viewer-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.landing.studio .viewer-metrics b {
+  font-weight: 400;
+  color: var(--blue);
+}
+
+/* ---- panel window: header as the rules window, then tabs, a body that scrolls if it must, the band ---- */
+.landing.studio .panel-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stroke) transparent;
+}
+
+/* the last row closes with a line, so a short body ends cleanly above the empty space */
+.landing.studio .panel-body > li:last-child {
+  border-bottom: 1px solid var(--stroke);
+}
+
+.landing.studio .panel-tabs {
+  flex: none;
+  display: grid;
+  grid-template-columns: 159px 160px 1fr; /* 5 cells each: the borders land on grid lines */
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--stroke);
+  list-style: none;
+}
+
+.landing.studio .panel-tabs button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  border-bottom: 1px solid var(--stroke);
+  background: var(--background);
+  color: var(--black);
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.landing.studio .panel-tabs li + li button {
+  border-left: 1px solid var(--stroke);
+}
+
+.landing.studio .panel-tabs button:hover {
+  color: var(--blue);
+}
+
+.landing.studio .panel-tabs button[aria-selected="true"] {
+  border-bottom-color: transparent;
+  background: var(--white);
+  color: var(--blue);
+}
+
+.landing.studio .panel-tabs .count {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--blue);
+  color: var(--white);
+  font-size: 10px;
+  letter-spacing: -0.1px;
+}
+
+/* the panel's band: a second button may sit between the outlined one and the arrow */
+.landing.studio .band-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--blue);
+  text-decoration: underline dotted;
+  text-decoration-thickness: 13%;
+}
+
+/* ---- rows (rules table style): title 160 · value 96 · the rest ---- */
+.landing.studio .row {
+  display: grid;
+  grid-template-columns: 159px 97px 1fr;
+  height: 32px;
+  border-top: 1px solid var(--stroke);
+  background: var(--background);
+}
+
+.landing.studio .row.wide {
+  grid-template-columns: 159px 1fr;
+}
+
+.landing.studio .row.full {
+  grid-template-columns: 1fr;
+}
+
+.landing.studio .row.split {
+  grid-template-columns: 159px 97px 96px 1fr;
+}
+
+.landing.studio .row.sub {
+  background: #e5e5e5;
+}
+
+.landing.studio .row .rules-title {
+  font-size: 12px;
+}
+
+.landing.studio .row.sub .rules-title {
+  padding: 0 8px 0 32px;
+}
+
+.landing.studio .cell-value {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-left: 1px solid var(--stroke);
+  border-right: 1px solid var(--stroke);
+  background: var(--white);
+}
+
+.landing.studio .cell-value:focus-within {
+  outline: 1px solid var(--blue);
+  outline-offset: -1px;
+}
+
+.landing.studio .cell-value.static {
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.landing.studio .cell-value.static.unknown {
+  color: var(--stroke);
+}
+
+.landing.studio .cell-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: -0.1px;
+  color: var(--black);
+  overflow: hidden;
+}
+
+.landing.studio .cell-note .muted {
+  color: var(--stroke);
+}
+
+/* two lines at most; the full text is in the title */
+.landing.studio .cell-note .clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.landing.studio .cell-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border-right: 1px solid var(--stroke);
+}
+
+/* the slider: a 1 px line, blue up to the value, and a blue handle */
+.landing.studio .cell-slider {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 16px;
+}
+
+.landing.studio input[type="range"] {
+  --fill: 50%;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.landing.studio input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  background: linear-gradient(to right, var(--blue) var(--fill), var(--stroke) var(--fill));
+}
+
+.landing.studio input[type="range"]::-webkit-slider-thumb {
+  width: 6px;
+  height: 16px;
+  margin-top: -7.5px;
+  border: 0;
+  background: var(--blue);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.landing.studio input[type="range"]::-moz-range-track {
+  height: 1px;
+  background: var(--stroke);
+}
+
+.landing.studio input[type="range"]::-moz-range-progress {
+  height: 1px;
+  background: var(--blue);
+}
+
+.landing.studio input[type="range"]::-moz-range-thumb {
+  width: 6px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--blue);
+}
+
+.landing.studio input[type="range"]:focus-visible {
+  outline: none;
+}
+
+.landing.studio input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 1px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.landing.studio input[type="range"]:disabled {
+  cursor: default;
+}
+
+.landing.studio input[type="range"]:disabled::-webkit-slider-thumb {
+  background: var(--stroke);
+}
+
+/* choices: adjoining cells, the chosen one white with blue text */
+.landing.studio .segments {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  min-width: 0;
+  border-left: 1px solid var(--stroke);
+}
+
+.landing.studio .segments button {
+  min-width: 0;
+  padding: 0 6px;
+  border: 0;
+  border-right: 1px solid var(--stroke);
+  background: var(--background);
+  color: var(--black);
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.landing.studio .row.full .segments {
+  border-left: 0;
+}
+
+.landing.studio .segments button:last-child {
+  border-right: 0;
+}
+
+.landing.studio .segments button:hover:not(:disabled) {
+  color: var(--blue);
+}
+
+.landing.studio .segments button[aria-pressed="true"] {
+  background: var(--white);
+  color: var(--blue);
+}
+
+.landing.studio .segments button:disabled {
+  color: var(--stroke);
+  cursor: default;
+}
+
+/* a whole row that is one button (presets, reset) */
+.landing.studio button.row-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--black);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.landing.studio button.row-action:hover:not(:disabled) {
+  color: var(--blue);
+}
+
+.landing.studio button.row-action:disabled {
+  color: var(--stroke);
+  cursor: default;
+}
+
+/* on/off: a 12 px box, blue with a white tick when on */
+.landing.studio .check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
+  cursor: pointer;
+}
+
+.landing.studio .check .box-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--white);
+}
+
+.landing.studio .check[aria-checked="true"] {
+  color: var(--blue);
+}
+
+.landing.studio .check[aria-checked="true"] .box-mark {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.landing.studio .check:disabled {
+  cursor: default;
+}
+
+/* a pick from a list (typology): the value, a chevron, and the rules window's menu below */
+.landing.studio .pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.landing.studio .rules-menu li.off {
+  color: var(--stroke);
+  cursor: default;
+}
+
+.landing.studio .rules-menu li.off:hover {
+  background: none;
+}
+
+/* the brief: a white text box, four rows high */
+.landing.studio .row.text {
+  position: relative;
+  height: 128px;
+  grid-template-columns: 1fr;
+  background: var(--white);
+}
+
+.landing.studio .row.text:focus-within {
+  outline: 1px solid var(--blue);
+  outline-offset: -1px;
+}
+
+.landing.studio .row.text textarea {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 8px 8px 40px;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: none;
+  color: var(--blue);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+}
+
+.landing.studio .row.text textarea::placeholder {
+  color: var(--stroke);
+}
+
+/* the brief's own button, in its bottom-right corner, in the outlined style of "Fill with suggested values" */
+.landing.studio .text-action {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--black);
+  background: var(--background);
+  color: var(--black);
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.landing.studio .text-action:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--white);
+  color: var(--blue);
+}
+
+.landing.studio .text-action:disabled {
+  border-color: var(--stroke);
+  color: var(--stroke);
+  cursor: default;
+}
+
+/* a section: a row whose title is grey, like the rules window's "Optional limits" */
+.landing.studio .section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-top: 1px solid var(--stroke);
+  background: var(--background);
+  font-size: 12px;
+  line-height: 12px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
+  white-space: nowrap;
+}
+
+.landing.studio .section .hint {
+  font-size: 10px;
+  letter-spacing: -0.1px;
+}
+
+/* notes: free text in the table, at least a row high */
+.landing.studio .note {
+  min-height: 32px;
+  padding: 8px;
+  border-top: 1px solid var(--stroke);
+  background: var(--background);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: var(--black);
+}
+
+.landing.studio .note.small {
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: -0.1px;
+}
+
+.landing.studio .note.white {
+  background: var(--white);
+}
+
+.landing.studio .note.accent {
+  color: var(--blue);
+}
+
+.landing.studio .note.muted {
+  color: var(--stroke);
+}
+
+.landing.studio .note ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing.studio .note li {
+  display: flex;
+  gap: 6px;
+}
+
+.landing.studio .note li + li {
+  margin-top: 4px;
+}
+
+.landing.studio .note li::before {
+  content: "–";
+  flex: none;
+  color: var(--stroke);
+}
+
+.landing.studio .note q {
+  quotes: "“" "”";
+  color: var(--blue);
+}
+
+.landing.studio .note .name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: -0.16px;
+  color: var(--blue);
+}
+
+.landing.studio .note .name .chip {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--blue);
+  color: var(--white);
+  font-size: 10px;
+  line-height: 16px;
+  letter-spacing: -0.1px;
+}
+
+/* compliance tags, next to the rules window's KNOWN / UNKNOWN: a failed rule is the one that needs attention (blue) */
+.landing.studio .rules-tag.pass {
+  background: #d8d8d8;
+  color: var(--black);
+}
+
+.landing.studio .rules-tag.fail {
+  background: var(--blue);
+  color: var(--white);
+}
+
+.landing.studio .rules-tag.open {
+  box-shadow: inset 0 0 0 1px var(--stroke);
+  color: var(--stroke);
+}
+
+.landing.studio .rules-tag.pass img {
+  filter: brightness(0) invert(0.357);
+}
+
+.landing.studio .rules-tag.fail img {
+  filter: brightness(0) invert(1);
+}
+
+/* the panel's busy line: grey while it scrambles, as the rules values do */
+.landing.studio .rules-count .scrambling {
+  color: var(--stroke);
+}
+
+/* the panels swap with the rules window's grow; the viewer window travels from the landing's model window */
+.landing.studio .studio-panel {
+  transition: opacity 300ms cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing.studio .viewer-canvas,
+  .landing.studio .studio-panel {
+    transition: none;
+  }
+}
+
+/* the studio's arrows always carry their label: label at the left, arrow at the right, grey until they can be used */
+.landing.studio .rules-go {
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+/* the viewer window's band and its contents fade in once the window has arrived */
+.landing.studio .studio-in,
+.landing.studio .option,
+.landing.studio .viewer-metrics,
+.landing.studio .viewer-tools,
+.landing.studio .viewer-flag {
+  animation: studio-in 450ms cubic-bezier(0.645, 0.045, 0.355, 1) backwards;
+}
+
+.landing.studio .viewer-frame {
+  animation: studio-in 300ms linear backwards;
+}
+
+@keyframes studio-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing.studio .studio-in,
+  .landing.studio .option,
+  .landing.studio .viewer-metrics,
+  .landing.studio .viewer-tools,
+  .landing.studio .viewer-flag,
+  .landing.studio .viewer-frame {
+    animation: none;
+  }
+}
