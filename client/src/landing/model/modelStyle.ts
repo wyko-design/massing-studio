@@ -68,7 +68,7 @@ export function sequence(hasGhost: boolean) {
 }
 
 /**
- * Lighting looks for the model (trial: switchable in the model window, keys 1–5). `light` null = flat line drawing.
+ * Lighting looks for the model (picked in the studio panels: Directions > View, Present > Look). `light` null = flat line drawing.
  * Fractions of white: `ambient` is the brightness of a face out of the sun, `sun` is added × cos(angle to the sun);
  * the sun stands `elevationDeg` high in compass direction `azimuthDeg` (90 = east). `shadow` is the darkening of the
  * ground in shade, `softness` the shadow edge blur (shadow-map texels). `lines` null = no edges.

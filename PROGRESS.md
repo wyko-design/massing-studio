@@ -983,3 +983,25 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
   - Proposal light is fixed (south-west view in mind); from the north-east all walls are the darker blue.
   - Not checked on macOS / dpr 2. The landing's Lines / Sun trial switcher in the site model is still there.
 - **Next:** review the studio by eye against the landing; decide on the compare view and whether "Extract rules" should come back (e.g. a row in the rules window's band).
+
+## Studio around the landing's site model (2026-10-26, second pass)
+- **Asked first (user's answers):** keep the 3D intro after "Start exploring", then open Directions around it; the landing's renderer everywhere (Directions, Present, PNG and PDF images); Lines / Sun as a row in the left panel; the output is always the square, resolution 1× / 2× / 4×.
+- **Built:**
+  - Rules window: "N fields need input" and "Fill with suggested values" stay hidden until the last row has unscrambled, then fade in together over 1.2 s (the count line's fade was being overridden by `label.t-label`'s transition).
+  - "Start exploring" sets `#studio/directions`: the window becomes the square, the model's intro plays, and once it can be turned the studio's panels grow in at both sides. The separate "Directions" arrow and the Lines / Sun buttons on the model are gone.
+  - Layout (`landing/grid.ts` `SQUARE` + `modelWindow`, `studio/layout.ts`, tests): the square is the landing's model window (19 cells at 1440×928, unchanged); it grows to 25 when both panels fit at 15 cells, shrinks so they keep 11 (1280 → 14). Panels are one cell from the square, as tall as it. Rules screen: the square slides left (600 ms, both ways) and the landing's rules window opens at its right.
+  - `SiteModel` is the studio's only renderer now: look from the store, the shown option's mass (`ProposalVolume`, placed with one scene→model matrix from `sceneToModel`, tested against `envelopeRings`), rising with the people; envelope switch; label layer (Present); `siteView.ts` handle for presets (SW/SE/NE/NW/Top at the end-view zoom), saved views (per plot, relative zoom) and captures. A capture renders the same frame at a higher pixel ratio, then paints the edge wash, labels and the placeholder watermark (exports only; nothing on the viewport).
+  - Panels: Directions = left `DirectionsControls` (Brief · Option X sliders with an A/B/C picker · View: Lines/Sun, envelope, start view; band "Generate directions") + right `OptionInfo` (tabs A/B/C with failed-rule counts; AI direction, parameters as set, computed numbers, rules, clamps, assumptions; header chip "Rules met / N rules not met", GFA, FAR, height; band arrow "Present"). Present = left `PresentControls` (Camera: presets, start view, saved view · Look: Lines/Sun, envelope, street name, annotations) + right `PresentOutput` (option, resolution, size, report narrative; band "PDF report" + "Export PNG"). `PanelFrame` fits 11–15 cells (narrow rows: 4-cell titles; band buttons shrink).
+  - `#studio/…` opened directly (reload): the default site loads, its address is looked up for the plot, and the model starts at its end view (`landing/restore.ts`).
+  - The studio chunk (panels, report writer) loads while the intro plays; the landing's own bundle is 378 kB again.
+- **Removed:** `App.tsx`, `studio/ViewerWindow.tsx`, the R3F studio viewer (`viewer/Viewer`, `CameraRig`, `SceneContents`, `ContextModel`, `Ground`, `EnvelopeGhost`, `Effects`, `Sun`, `ExportCanvas`, `cameraHandle`, `project`) and its camera presets/tests; `renderStyle` keeps look, proposal and labels only.
+- **Checked:** 437 tests (−11 with the removed viewer's camera/frame tests, +6 layout/sceneToModel), typecheck, build. Browser at 1440×928 (plus 1920×1080 and 1280×800): globe → Delft → Hendrik Casimirstraat 8 → rules (fade checked mid-way) → Start exploring → intro → Directions; Sun look (proposal casts its shadow), sliders and roof update the mass, back to rules (square slides), Present with labels, presets Top / SE, PNG 2160 px (opened: same view, wash, labels, watermark), PDF report, option C capture shows C; direct `#studio/directions` reload.
+- **Deviations from SPEC.md:**
+  - §10: Present lost perspective / eye level, the grey context, outline width, sun date/time, softness and AO: the site model's renderer has none of them (user's choice to use it everywhere). The PDF renders every option from the view on screen (not a fitted SE preset); the cover is that view at 2×.
+  - §10: the export frame is always the square (no 4:5 / A3).
+- **Open issues:**
+  - During a PDF report the square briefly shows options B and C while they are captured.
+  - The square's labels are CSS-px sized, so on a small square (1280 wide) they cover more of the model.
+  - The proposal light is fixed for the south-west view; the Sun look's sun is the landing's graphic north-west sun, not the real date/time.
+  - Not checked on macOS / dpr 2; not deployed (nothing committed this pass).
+- **Next:** review by eye; commit and push to master for Render.

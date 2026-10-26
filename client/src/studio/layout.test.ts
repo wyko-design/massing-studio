@@ -1,52 +1,59 @@
 import { describe, expect, it } from "vitest";
-import { computeGrid, modelWindow } from "../landing/grid";
-import { STUDIO, STUDIO_MIN_ROWS, studioLayout } from "./layout";
+import { EDGE_CELLS, LAYOUT, SQUARE, computeGrid, landingLayout, modelWindow } from "../landing/grid";
+import { STUDIO, studioLayout } from "./layout";
 
 const width = (c: { c0: number; c1: number }) => c.c1 - c.c0;
 const height = (c: { r0: number; r1: number }) => c.r1 - c.r0;
 
 describe("studioLayout", () => {
-  it("lays the viewer and the panel side by side, one cell apart, centred, at the reference size", () => {
+  it("keeps the landing's square at the reference size, with a panel at each side", () => {
     const g = computeGrid(1440, 928);
     const l = studioLayout(g);
-    expect(width(l.panel)).toBe(STUDIO.panelCols);
-    expect(l.panel.c0 - l.viewer.c1).toBe(STUDIO.gap);
-    expect(l.viewer.r0).toBe(l.panel.r0);
-    expect(l.viewer.r1).toBe(l.panel.r1);
-    const left = l.viewer.c0;
-    const right = g.N - l.panel.c1;
-    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
-    // taller than the landing's windows when there is room, with two free rows below
-    expect(height(l.viewer)).toBeGreaterThan(19);
-    expect(g.M - l.viewer.r1).toBeGreaterThanOrEqual(STUDIO.bottomCells);
+    expect(l.square).toEqual(modelWindow(g));
+    expect(width(l.square)).toBe(LAYOUT.windowRows);
+    expect(height(l.square)).toBe(LAYOUT.windowRows);
+    expect(l.square.c0 - l.left.panel.c1).toBe(SQUARE.gap);
+    expect(l.right.panel.c0 - l.square.c1).toBe(SQUARE.gap);
+    expect(width(l.left.panel)).toBeGreaterThanOrEqual(SQUARE.panelMin);
+    expect(width(l.right.panel)).toBeGreaterThanOrEqual(SQUARE.panelMin);
+    expect(l.left.panel.c0).toBeGreaterThanOrEqual(EDGE_CELLS);
+    expect(l.right.panel.c1).toBeLessThanOrEqual(g.N - EDGE_CELLS);
+    for (const p of [l.left, l.right]) {
+      expect([p.panel.r0, p.panel.r1]).toEqual([l.square.r0, l.square.r1]);
+      expect(p.band).toEqual({ c0: p.panel.c0, c1: p.panel.c1, r0: p.panel.r1 - STUDIO.bandRows, r1: p.panel.r1 });
+    }
   });
 
-  it("puts the bands in the last rows of both windows, the canvas above the viewer band", () => {
-    const l = studioLayout(computeGrid(1440, 928));
-    expect(l.viewerBand.r1).toBe(l.viewer.r1);
-    expect(height(l.viewerBand)).toBe(STUDIO.bandRows);
-    expect(l.canvas.r1).toBe(l.viewerBand.r0);
-    expect(l.panelBand).toEqual({ c0: l.panel.c0, c1: l.panel.c1, r0: l.panel.r1 - STUDIO.bandRows, r1: l.panel.r1 });
-  });
-
-  it("never goes below the landing window's height and keeps clear of the logo", () => {
-    const g = computeGrid(1280, 600, 1, STUDIO_MIN_ROWS);
-    const l = studioLayout(g);
-    expect(height(l.viewer)).toBe(STUDIO.minRows);
-    expect(l.viewer.r0).toBeGreaterThan(l.logo.r1);
-  });
-
-  it("caps the height and the viewer's width on big screens", () => {
-    const l = studioLayout(computeGrid(2560, 1440));
-    expect(height(l.viewer)).toBe(STUDIO.maxRows);
-    expect(width(l.viewer)).toBe(STUDIO.maxRows + 12);
-  });
-
-  it("starts from the landing's model window: the viewer is at least as big", () => {
+  it("is on the globe window's rows at the reference size", () => {
     const g = computeGrid(1440, 928);
-    const m = modelWindow(g);
+    const win = landingLayout(g).window;
+    expect([studioLayout(g).square.r0, studioLayout(g).square.r1]).toEqual([win.r0, win.r1]);
+  });
+
+  it("grows the square on a big page while both panels keep their full width", () => {
+    const g = computeGrid(1920, 1080);
     const l = studioLayout(g);
-    expect(height(l.viewer)).toBeGreaterThanOrEqual(height(m));
-    expect(width(l.viewer)).toBeGreaterThanOrEqual(width(m));
+    expect(height(l.square)).toBeGreaterThan(LAYOUT.windowRows);
+    expect(height(l.square)).toBeLessThanOrEqual(SQUARE.maxSide);
+    expect(width(l.left.panel)).toBe(SQUARE.panelMax);
+    expect(width(l.right.panel)).toBe(SQUARE.panelMax);
+  });
+
+  it("shrinks the square on a narrow page so the panels keep their minimum width, clear of the logo", () => {
+    const g = computeGrid(1280, 800, 1, 28);
+    const l = studioLayout(g);
+    expect(height(l.square)).toBeLessThan(LAYOUT.windowRows);
+    expect(width(l.left.panel)).toBeGreaterThanOrEqual(SQUARE.panelMin);
+    expect(width(l.right.panel)).toBeGreaterThanOrEqual(SQUARE.panelMin);
+    expect(l.square.r0).toBeGreaterThan(l.logo.r1);
+  });
+
+  it("moves the square left on the rules screen, the rules window one cell to its right, centred together", () => {
+    const g = computeGrid(1440, 928);
+    const l = studioLayout(g);
+    expect(width(l.rulesSquare)).toBe(width(l.square));
+    expect(l.rules.panel.c0 - l.rulesSquare.c1).toBe(SQUARE.gap);
+    expect(width(l.rules.panel)).toBe(STUDIO.rulesCols);
+    expect(Math.abs(l.rulesSquare.c0 - (g.N - l.rules.panel.c1))).toBeLessThanOrEqual(1);
   });
 });

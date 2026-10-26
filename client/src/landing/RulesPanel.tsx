@@ -692,7 +692,8 @@ export function RulesPanel({ grid, layout, onContinue, continueLabel = "Start ex
           </span>
         ))}
       </label>
-      <button type="button" className="box rules-fill t-semimono t-input" style={fillBox} disabled={!ready || complete} onClick={fillAll}>
+      {/* with the count line: a slow fade once the last row has unscrambled */}
+      <button type="button" className={`box rules-fill rules-late t-semimono t-input${countShown ? " on" : ""}`} style={fillBox} disabled={!ready || complete || !countShown} onClick={fillAll}>
         Fill with suggested values
         <img src={suggestIcon} alt="" width={12} height={12} />
       </button>

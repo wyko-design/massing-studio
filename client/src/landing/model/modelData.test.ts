@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlotData } from "../globe/plotLayer";
 import { localFrame, toLonLat } from "../globe/plotLayer";
-import { blockedTest, buildModel, envelopeRings, mergeBlocks, simplifyRing } from "./modelData";
+import { blockedTest, buildModel, envelopeRings, mergeBlocks, sceneToModel, simplifyRing } from "./modelData";
 
 const O: [number, number] = [4.37, 52.0];
 const L = localFrame(O);
@@ -77,6 +77,25 @@ describe("envelopeRings", () => {
       expect(Math.abs(p[0] - q[0])).toBeLessThan(0.2);
       expect(Math.abs(p[1] - q[1])).toBeLessThan(0.2);
     }
+  });
+});
+
+describe("sceneToModel", () => {
+  it("maps scene points where envelopeRings puts them", () => {
+    const ring = rect(-120, -80, 150, 90).slice(0, 4);
+    const env = {
+      footprint: { type: "Polygon" as const, coordinates: [rect(-120, -80, 150, 90)] },
+      maxHeight: 12,
+      source: "setbacks" as const,
+      prov: { status: "assumed" as const, source: "test" },
+      notes: [],
+    };
+    const exact = envelopeRings(env, { lon: O[0], lat: O[1] }, L)[0]!;
+    const m = sceneToModel({ lon: O[0], lat: O[1] }, L);
+    ring.forEach(([x, y], i) => {
+      expect(Math.abs(m.a * x + m.b * y + m.e - exact[i]![0])).toBeLessThan(0.01);
+      expect(Math.abs(m.c * x + m.d * y + m.f - exact[i]![1])).toBeLessThan(0.01);
+    });
   });
 });
 

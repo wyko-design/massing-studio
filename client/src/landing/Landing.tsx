@@ -12,19 +12,27 @@ import { contextRadius, modelStyle } from "./model/modelStyle";
 import { fetchPlotContext } from "./geoApi";
 import { fetchScene } from "../api/scene";
 import type { PlotData } from "./globe/plotLayer";
-import { useEnvelope, useSiteStore } from "../state/siteStore";
+import { useConstraints, useEnvelope, usePlaceholder, useSiteStore } from "../state/siteStore";
+import { computeMassing, useMassing, useMassingStore } from "../state/massingStore";
+import { usePresentStore } from "../state/presentStore";
+import { useAiStore } from "../state/aiStore";
+import { buildOverlay } from "../present/labels";
 import { useLandingStore } from "./landingStore";
 import { TOKEN_VARS } from "./tokens";
 import { RulesPanel } from "./RulesPanel";
 import { ShuffleText } from "./ShuffleText";
 import { useGrid } from "./useGrid";
 import { perfOn } from "./perf";
-import arrowUrl from "./assets/arrow.svg";
-import { DIRECTIONS_HASH } from "../routes";
+import { restoreStudio } from "./restore";
+import { DIRECTIONS_HASH, isStudioHash, screenOfHash } from "../routes";
+import { studioLayout } from "../studio/layout";
 import { PerfHud } from "./PerfHud";
 
 // the site model (three.js) loads only when it is needed; RulesPanel preloads it
 const SiteModel = lazy(() => import("./model/SiteModel"));
+// the studio's panels (and the report writer behind them) load while the model's intro plays
+const loadStudio = () => import("../studio/Studio");
+const StudioPanels = lazy(() => loadStudio().then((m) => ({ default: m.StudioPanels })));
 
 /** Hook block: sub-line sits this far below the title's line box (Figma). */
 const SUB_GAP = 8;
@@ -48,9 +56,90 @@ function useExpand(on: boolean, ms = 450): number {
   return t;
 }
 
-/** Entry screen (UI-1): page grid, logo, window with the globe and the country step. */
+/** The location hash, kept current. */
+function useHash(): string {
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const on = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return hash;
+}
+
+/**
+ * What the studio adds to the site model: the shown option's mass (or the one an export asks for), the envelope switch,
+ * the look, and the label layer (Present and exports).
+ */
+function useStudioScene(presenting: boolean) {
+  const scene = useSiteStore((s) => s.scene);
+  const showEnvelope = useSiteStore((s) => s.showEnvelope);
+  const envelope = useEnvelope();
+  const constraints = useConstraints();
+  const placeholder = usePlaceholder();
+  const active = useMassingStore((s) => s.active);
+  const massing = useMassing(active);
+  const present = usePresentStore();
+  const names = useAiStore((s) => s.directions.result?.options);
+  const option = present.job?.option ?? active;
+  const jobMassing = useMemo(() => (present.job ? computeMassing(present.job.option) : null), [present.job]);
+  const shown = present.job ? jobMassing : massing;
+  const name = names?.find((o) => o.id === option)?.name;
+  const overlay = useMemo(
+    () =>
+      scene && (presenting || present.job)
+        ? buildOverlay({
+            scene,
+            envelope,
+            showEnvelope,
+            result: shown,
+            optionId: option,
+            optionName: name,
+            streetSide: constraints?.streetSide?.value ?? null,
+            annotations: present.annotations,
+            streetLabels: present.streetLabels,
+            placeholder,
+          })
+        : null,
+    [scene, presenting, present.job, envelope, showEnvelope, shown, option, name, constraints, present.annotations, present.streetLabels, placeholder],
+  );
+  return { proposal: shown?.volumes ?? null, showEnvelope, overlay, look: present.style.look, labels: present.style.labels };
+}
+
+/** Eases from where it is to `to` (0 or 1) over `ms`, both ways. */
+function useSlide(to: 0 | 1, ms: number): number {
+  const [t, setT] = useState<number>(to);
+  const now = useRef(t);
+  now.current = t;
+  useEffect(() => {
+    const from = now.current;
+    if (from === to) return;
+    const start = performance.now();
+    let raf = 0;
+    const step = (time: number) => {
+      const x = Math.min(1, (time - start) / ms);
+      setT(from + (to - from) * x * x * (3 - 2 * x));
+      if (x < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to, ms]);
+  return t;
+}
+
+/**
+ * Entry screen (UI-1): page grid, logo, window with the globe and the country step. After the rules, the window becomes
+ * the site model's square, and once its intro has played the studio opens around it (#studio/directions, /present,
+ * /rules). Opened directly at #studio, the default site is loaded and the model starts at its end view.
+ */
 export function Landing() {
   const grid = useGrid(LANDING_MIN_ROWS);
+  const hash = useHash();
+  const [direct] = useState(() => isStudioHash(window.location.hash) && !useLandingStore.getState().plot);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  useEffect(() => {
+    if (direct) restoreStudio().catch((e) => setRestoreError(e instanceof Error ? e.message : String(e)));
+  }, [direct]);
   const panelOpen = useLandingStore((s) => s.panelOpen);
   const layout = landingLayout(grid, undefined, panelOpen);
   const [overlay, setOverlay] = useState(false);
@@ -118,9 +207,21 @@ export function Landing() {
   const frozen = useRef(placement);
   if (model !== "on") frozen.current = placement;
   const shown = model === "on" ? frozen.current : placement;
-  const modelT = useExpand(model === "on", modelStyle.windowMs);
+  const modelT = useExpand(model === "on", direct ? 1 : modelStyle.windowMs);
   const from = boxStyle(grid, layout.window);
-  const win = model === "on" ? lerpBox(from, boxStyle(grid, modelWindow(grid)), modelT) : from;
+  // the studio: once the model can be turned, its panels open around the square; on the rules screen the square moves left
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    if (model !== "on") return setLive(false);
+    void loadStudio();
+  }, [model]);
+  const studio = model === "on" && live && isStudioHash(hash);
+  const screen = screenOfHash(hash);
+  const studioCells = studioLayout(grid);
+  const rulesT = useSlide(studio && screen === "rules" ? 1 : 0, 600);
+  const squareBox = lerpBox(boxStyle(grid, studioCells.square), boxStyle(grid, studioCells.rulesSquare), rulesT);
+  const win = model === "on" ? (modelT < 1 ? lerpBox(from, squareBox, modelT) : squareBox) : from;
+  const studioScene = useStudioScene(studio && screen === "present");
   // the 3D copy is built hidden once the rules have loaded (building it stalls the page for a moment, better while the
   // user reads than on the arrow click); a click before that builds it at once
   const sceneReady = useSiteStore((s) => !!s.scene && !s.loading);
@@ -162,21 +263,12 @@ export function Landing() {
     // the model square covers the whole 2D view at the hand-over (a little extra for rounding)
     return { pxPerM, level, fade };
   }, [plot, panelOpen, from.width, from.height]);
-  const finalCells = modelWindow(grid);
-  const finalBox = boxStyle(grid, finalCells);
-  // the model can be turned: the arrow to the studio's Directions shows (its code is loaded while the model animates)
-  const [live, setLive] = useState(false);
-  useEffect(() => {
-    if (model !== "on") return setLive(false);
-    void import("../App");
-  }, [model]);
-  // the arrow: one row high, five cells wide, one cell in from the model window's bottom-right corner
-  const nextBox = boxStyle(grid, { c0: finalCells.c1 - 6, c1: finalCells.c1 - 1, r0: finalCells.r1 - 2, r1: finalCells.r1 - 1 });
+  const finalBox = boxStyle(grid, modelWindow(grid));
   const hookTop = lineY(grid, layout.hookRow);
   const hidden = phase !== "idle" && phase !== "toIdle";
 
   return (
-    <div className="landing" style={{ ...TOKEN_VARS, width: grid.width, height: grid.height }}>
+    <div className={`landing${studio ? " studio" : ""}`} style={{ ...TOKEN_VARS, width: grid.width, height: grid.height }}>
       <GridLines grid={grid} />
       <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
         <button type="button" className="box logo t-semimono t-logo" style={boxStyle(grid, layout.logo)} onClick={() => window.location.reload()} aria-label="Massing Studio, reload the site">
@@ -208,11 +300,21 @@ export function Landing() {
               reducedMotion={reducedMotion}
               onReady={modelReady}
               onLive={() => setLive(true)}
+              look={studioScene.look}
+              proposal={studioScene.proposal}
+              showEnvelope={studioScene.showEnvelope}
+              overlay={studioScene.overlay}
+              labels={studioScene.labels}
             />
           </Suspense>
         )}
-        <Globe faded={model === "on"} placement={shown} country={country} city={city} address={address} onSettled={settle} onResolve={startResolve} onWiden={startWiden} onPlotFailed={plotFailed} onPlot={setPlot} />
-        <div className={`box hook${hidden ? " hidden" : ""}`} style={{ left: win.left, top: hookTop, width: win.width }} aria-hidden={hidden}>
+        {!direct && <Globe faded={model === "on"} placement={shown} country={country} city={city} address={address} onSettled={settle} onResolve={startResolve} onWiden={startWiden} onPlotFailed={plotFailed} onPlot={setPlot} />}
+        {direct && !live && (
+          <div className="box site-loading t-semimono" style={win}>
+            <ShuffleText parts={[{ text: restoreError ? `Could not load the site: ${restoreError}` : "Loading the site" }]} scrambling={!restoreError} />
+          </div>
+        )}
+        <div className={`box hook${hidden || direct ? " hidden" : ""}`} style={{ left: win.left, top: hookTop, width: win.width }} aria-hidden={hidden || direct}>
           <h1 className="t-regular t-hook" style={{ margin: 0, height: TITLE_LINE }}>
             <ShuffleText parts={[{ text: "Every site has a future to discover" }]} active={!hidden} />
           </h1>
@@ -221,18 +323,25 @@ export function Landing() {
           </p>
         </div>
 
-        {live && model === "on" && (
-          <button type="button" className="box go rules-go ready site-next" style={nextBox} aria-label="Directions" onClick={() => (window.location.hash = DIRECTIONS_HASH)}>
-            <span className="go-label t-semimono">Directions</span>
-            <img src={arrowUrl} alt="" />
-          </button>
-        )}
         {!panelOpen && <div className="box input-band" style={boxStyle(grid, layout.inputBand)} />}
-        <CountryInput grid={grid} layout={layout} />
-        {panelOpen && modelT < 1 && (
+        {!direct && <CountryInput grid={grid} layout={layout} />}
+        {panelOpen && modelT < 1 && !direct && (
           <div className={`rules-leave${model === "on" ? " gone" : ""}`}>
-            <RulesPanel grid={grid} layout={layout} />
+            {/* "Start exploring" goes straight to Directions: the model's intro plays, then the studio opens around it */}
+            <RulesPanel
+              grid={grid}
+              layout={layout}
+              onContinue={() => {
+                useLandingStore.getState().openModel();
+                window.location.hash = DIRECTIONS_HASH;
+              }}
+            />
           </div>
+        )}
+        {studio && (
+          <Suspense fallback={null}>
+            <StudioPanels grid={grid} layout={studioCells} screen={screen} />
+          </Suspense>
         )}
       </div>
       {overlay && <GridLines grid={grid} overlay />}

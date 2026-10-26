@@ -282,6 +282,25 @@ export function envelopeRings(envelope: Envelope, origin: { lat: number; lon: nu
   );
 }
 
+/**
+ * The scene frame (RD metres around the parcel centroid `origin`) as an affine map onto the model's local frame: plan
+ * x' = a·x + b·y + e, y' = c·x + d·y + f. Over a site's few hundred metres RD and the local frame differ by a rotation and
+ * a scale that do not change measurably, so solids (the proposal, its roofs) can be built in the scene frame and placed
+ * with one matrix; points match `envelopeRings` to well under a centimetre.
+ */
+export function sceneToModel(origin: { lat: number; lon: number }, local: Local): { a: number; b: number; c: number; d: number; e: number; f: number } {
+  const [ox, oy] = wgs84ToRd(origin.lon, origin.lat);
+  const map = (x: number, y: number) => {
+    const [lon, lat] = rdToWgs84(x + ox, y + oy);
+    return toLocal(local, lon, lat);
+  };
+  const S = 100;
+  const [e, f] = map(0, 0);
+  const [px, py] = map(S, 0);
+  const [qx, qy] = map(0, S);
+  return { a: (px - e) / S, c: (py - f) / S, b: (qx - e) / S, d: (qy - f) / S, e, f };
+}
+
 /** A point-in-footprint test over many polygons, with a bounding box per polygon to skip most of them. */
 export function blockedTest(polys: Poly[]): (x: number, y: number) => boolean {
   const boxes = polys.map((p) => {

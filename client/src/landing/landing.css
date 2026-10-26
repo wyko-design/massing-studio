@@ -343,10 +343,19 @@
   opacity: 0;
 }
 
-/* the count line: hidden until the last row has unscrambled, then it fades in */
-.landing .rules-count {
+/* the count line and the button below it: hidden until the last row has unscrambled, then they fade in slowly */
+.landing label.rules-count {
   opacity: 0;
-  transition: opacity 250ms ease-out;
+  transition: opacity 1200ms ease-out; /* label: beats the label's own "left" transition */
+}
+
+.landing .rules-grow > .rules-fill.rules-late {
+  opacity: 0;
+  transition: opacity 1200ms ease-out;
+}
+
+.landing .rules-grow > .rules-fill.rules-late.on {
+  opacity: 1;
 }
 
 .landing .rules-count.on {
@@ -999,45 +1008,23 @@
   cursor: grabbing;
 }
 
-/* lighting looks of the site model (trial switcher, bottom left inside the window; keys 1–5) */
-.landing .site-looks {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
+
+/* the studio opened directly: the square says what it is waiting for */
+.landing .site-loading {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  color: var(--stroke);
 }
 
-.landing .site-looks button {
-  height: 20px;
-  padding: 0 6px;
-  border: 1px solid var(--stroke);
-  background: var(--white);
-  color: var(--black);
-  font: inherit;
-  cursor: pointer;
-}
-
-.landing .site-looks button.on {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: var(--white);
-}
-
-/* leaves the landing for the studio's Directions screen: the rules window's labelled arrow, on the grid inside the model window */
-.landing .site-next {
-  z-index: 2;
-  animation: site-next-in 450ms cubic-bezier(0.645, 0.045, 0.355, 1) backwards;
-}
-
-@keyframes site-next-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing .site-next {
-    animation: none;
-  }
+/* the label layer over the site model (Present) */
+.landing .site-labels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }

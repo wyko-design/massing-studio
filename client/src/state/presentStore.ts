@@ -1,30 +1,23 @@
 import { create } from "zustand";
 import { useMassingStore, type OptionId } from "./massingStore";
 import { defaultRenderStyle, type LookId, type RenderStyle } from "../viewer/renderStyle";
-import { cameraHandle } from "../viewer/cameraHandle";
-import { convertView, presetView, type Focus, type Preset, type Projection, type View } from "../present/camera";
-import type { Aspect, Multiplier } from "../present/frame";
+import { loadSavedViews, presetView, siteView, storeSavedViews, type SiteView, type ViewPreset } from "../landing/model/siteView";
+import type { Multiplier } from "../present/frame";
 
-const SAVED_VIEWS_KEY = "massing.savedViews";
+const LOOK_KEY = "massing.siteLook";
 
-/** Saved views survive a reload in this browser only. Storage may be unavailable: never required. */
-function loadSavedViews(): Record<string, View> {
+/** The lighting look this browser last chose (the site model's "lines" or "sun"). */
+function savedLook(): LookId {
   try {
-    return JSON.parse(localStorage.getItem(SAVED_VIEWS_KEY) ?? "{}") as Record<string, View>;
+    const look = localStorage.getItem(LOOK_KEY);
+    return look === "sun" ? "sun" : "lines";
   } catch {
-    return {};
-  }
-}
-function storeSavedViews(views: Record<string, View>) {
-  try {
-    localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(views));
-  } catch {
-    // not persisted; the view still lives in memory
+    return "lines";
   }
 }
 
 /** `report` jobs hand their JPEG back to `renderForReport` instead of downloading a PNG. */
-export type ExportJob = { id: number; view: View; aspect: Aspect; multiplier: Multiplier; fileName: string; option: OptionId; deliver: "download" | "report" };
+export type ExportJob = { id: number; multiplier: Multiplier; fileName: string; option: OptionId; deliver: "download" | "report" };
 export type ExportState =
   | { status: "idle" }
   | { status: "rendering" }
@@ -32,31 +25,24 @@ export type ExportState =
   | { status: "error"; message: string };
 
 type PresentState = {
+  /** The look (lines or sun) and the label style; the rest of the render style is the site model's own. */
   style: RenderStyle;
-  projection: Projection;
-  aspect: Aspect;
   multiplier: Multiplier;
   streetLabels: boolean;
   annotations: boolean;
-  /** One saved custom camera per parcel id. */
-  savedViews: Record<string, View>;
+  /** One saved view per parcel id. */
+  savedViews: Record<string, SiteView>;
   job: ExportJob | null;
   exportState: ExportState;
-  setStyle: <K extends keyof RenderStyle>(key: K, patch: Partial<RenderStyle[K]>) => void;
-  /** Lines (the site model's drawing) or sun (shadows, ambient occlusion). */
   setLook: (look: LookId) => void;
-  setProjectionState: (projection: Projection) => void;
-  /** Switch projection keeping the framing. */
-  switchProjection: (projection: Projection) => void;
-  applyPreset: (preset: Preset, focus: Focus, streetBearing: number | null) => void;
-  setAspect: (aspect: Aspect) => void;
+  applyPreset: (preset: ViewPreset) => void;
   setMultiplier: (multiplier: Multiplier) => void;
   setToggle: (key: "streetLabels" | "annotations", on: boolean) => void;
   saveView: (parcelId: string) => void;
   restoreView: (parcelId: string) => void;
   startExport: (fileName: string) => void;
-  /** Render one option from a given view for the PDF report; resolves with the JPEG. One at a time. */
-  renderForReport: (option: OptionId, view: View, aspect: Aspect, multiplier: Multiplier) => Promise<Blob>;
+  /** Render one option from the view on screen for the PDF report; resolves with the JPEG. One at a time. */
+  renderForReport: (option: OptionId, multiplier: Multiplier) => Promise<Blob>;
   finishExport: (result: ExportState) => void;
 };
 
@@ -64,31 +50,26 @@ let jobId = 0;
 const reportWaiters = new Map<number, { resolve: (b: Blob) => void; reject: (e: Error) => void }>();
 
 export const usePresentStore = create<PresentState>()((set, get) => ({
-  style: defaultRenderStyle,
-  projection: "ortho",
-  aspect: "4:5",
+  style: { ...defaultRenderStyle, look: savedLook() },
   multiplier: 2,
   streetLabels: true,
   annotations: true,
   savedViews: loadSavedViews(),
   job: null,
   exportState: { status: "idle" },
-  setStyle: (key, patch) => set((s) => ({ style: { ...s.style, [key]: { ...(s.style[key] as object), ...patch } } })),
-  setLook: (look) => set((s) => ({ style: { ...s.style, look } })),
-  setProjectionState: (projection) => set({ projection }),
-  switchProjection: (projection) => {
-    const h = cameraHandle();
-    if (h) h.apply(convertView(h.capture(), projection, h.size()));
+  setLook: (look) => {
+    try {
+      localStorage.setItem(LOOK_KEY, look);
+    } catch {
+      // private window: the choice just is not remembered
+    }
+    set((s) => ({ style: { ...s.style, look } }));
   },
-  applyPreset: (preset, focus, streetBearing) => {
-    const h = cameraHandle();
-    if (h) h.apply(presetView(preset, focus, h.size(), get().projection, streetBearing));
-  },
-  setAspect: (aspect) => set({ aspect }),
+  applyPreset: (preset) => siteView()?.set(presetView(preset)),
   setMultiplier: (multiplier) => set({ multiplier }),
   setToggle: (key, on) => set({ [key]: on } as Pick<PresentState, typeof key>),
   saveView: (parcelId) => {
-    const view = cameraHandle()?.capture();
+    const view = siteView()?.get();
     if (!view) return;
     const savedViews = { ...get().savedViews, [parcelId]: view };
     storeSavedViews(savedViews);
@@ -96,21 +77,19 @@ export const usePresentStore = create<PresentState>()((set, get) => ({
   },
   restoreView: (parcelId) => {
     const view = get().savedViews[parcelId];
-    if (view) cameraHandle()?.apply(view);
+    if (view) siteView()?.set(view);
   },
   startExport: (fileName) => {
-    const view = cameraHandle()?.capture();
-    if (!view) return set({ exportState: { status: "error", message: "The viewer is not ready yet." } });
+    if (!siteView()) return set({ exportState: { status: "error", message: "The model is not ready yet." } });
     const prev = get().exportState;
     if (prev.status === "done") URL.revokeObjectURL(prev.url);
-    const { aspect, multiplier } = get();
-    set({ job: { id: ++jobId, view, aspect, multiplier, fileName, option: useMassingStore.getState().active, deliver: "download" }, exportState: { status: "rendering" } });
+    set({ job: { id: ++jobId, multiplier: get().multiplier, fileName, option: useMassingStore.getState().active, deliver: "download" }, exportState: { status: "rendering" } });
   },
-  renderForReport: (option, view, aspect, multiplier) =>
+  renderForReport: (option, multiplier) =>
     new Promise<Blob>((resolve, reject) => {
       const id = ++jobId;
       reportWaiters.set(id, { resolve, reject });
-      set({ job: { id, view, aspect, multiplier, fileName: `report-${option}.jpg`, option, deliver: "report" } });
+      set({ job: { id, multiplier, fileName: `report-${option}.jpg`, option, deliver: "report" } });
     }),
   finishExport: (exportState) => {
     const job = get().job;
@@ -121,8 +100,7 @@ export const usePresentStore = create<PresentState>()((set, get) => ({
       if (exportState.status === "done") {
         URL.revokeObjectURL(exportState.url);
         waiter.resolve(exportState.blob);
-      }
-      else waiter.reject(new Error(exportState.status === "error" ? exportState.message : "Render failed."));
+      } else waiter.reject(new Error(exportState.status === "error" ? exportState.message : "Render failed."));
       return;
     }
     set({ job: null, exportState });

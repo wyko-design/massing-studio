@@ -7,16 +7,22 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { easeCubicInOut, easeCubicOut } from "d3-ease";
-import type { Envelope } from "@massing/shared";
+import type { Envelope, Volume } from "@massing/shared";
 import type { BoxStyle } from "../grid";
 import { localFrame, plotView, toLocal, type PlotData } from "../globe/plotLayer";
 import { perfCall, timed } from "../perf";
 import { buildingGeometries, edgePoints, prism, shapeOf, type BuildingArrays } from "./buildingGeometry";
-import { envelopeRings, type ModelData, type Poly, type XY } from "./modelData";
+import { envelopeRings, sceneToModel, type ModelData, type Poly, type XY } from "./modelData";
 import { modelGraph, prepareModelAsync } from "./modelJobs";
 import type { PreparedModel } from "./modelWork";
 import { moverPose, spawnMover, stepMover, type Graph, type Mover } from "./movers";
 import { LOOKS, modelStyle as S, sequence, viewLimits, type Look } from "./modelStyle";
+import { registerSiteView, type SiteView } from "./siteView";
+import { ProposalLight, ProposalVolume } from "../../viewer/ProposalVolume";
+import { defaultRenderStyle, type RenderStyle } from "../../viewer/renderStyle";
+import { drawOverlay, overlayFonts, type Project } from "../../present/drawOverlay";
+import type { Overlay } from "../../present/labels";
+import type { P3 } from "../../present/camera";
 
 /**
  * The site model (after the rules): a three.js copy of the 2D plot view that starts as its exact top view (same centre,
@@ -47,14 +53,19 @@ export type SiteModelProps = {
   reducedMotion: boolean;
   /** The first frame is on screen: the hand-over can start. */
   onReady: () => void;
-  /** The camera has landed and the model can be turned: the next step's button may show. */
+  /** The camera has landed and the model can be turned: the studio's panels may show. */
   onLive?: () => void;
+  /** Lighting look ("lines" or "sun", modelStyle.LOOKS). */
+  look: string;
+  /** The shown option's massing, in the scene frame (rises with the people, after the intro). */
+  proposal?: Volume[] | null;
+  showEnvelope?: boolean;
+  /** Label layer (Present), world points in the scene frame; drawn over the model and into captures. */
+  overlay?: Overlay | null;
+  labels?: RenderStyle["labels"];
 };
 
 type Clock = { elapsed: () => number };
-
-/** Per-viewer memory of the chosen lighting look. */
-const LOOK_KEY = "massing.siteLook";
 
 const clamp01 = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x);
 const at = (e: number, delay: number, ms: number) => clamp01((e - delay) / ms);
@@ -394,30 +405,43 @@ function Rig({ clock, startZoom, endZoom, onDone }: { clock: Clock; startZoom: n
  * Ctrl + right drag zooms, the wheel zooms. No inertia (the view stops with the mouse). The target stays within `panM` of
  * the plot, the zoom within [minZoom, maxZoom] and the tilt within the model's limits, so the end of the data never shows.
  */
-function RhinoControls({ limits }: { limits: ReturnType<typeof viewLimits> }) {
+/** The orbit's state, kept across re-mounts of the controls (a resize changes the limits). */
+type Orbit = { target: THREE.Vector3; polar: number; azimuth: number; place: () => void };
+
+function RhinoControls({ limits, orbit }: { limits: ReturnType<typeof viewLimits>; orbit: { current: Orbit | null } }) {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   const dom = useThree((s) => s.gl.domElement);
   const invalidate = useThree((s) => s.invalidate);
   useEffect(() => {
     const R = 2000;
-    const target = new THREE.Vector3();
-    // the turn the Rig ended on, read back from the camera
+    // the first time: the turn the Rig ended on, read back from the camera (it sits at −forward·sinθ, forward = (sinφ, 0, −cosφ))
     const rel = camera.position.clone();
-    let polar = Math.acos(Math.min(1, Math.max(-1, rel.y / (rel.length() || 1))));
-    let azimuth = Math.atan2(-rel.x, rel.z); // camera sits at -forward·sinθ: forward = (sinφ, 0, −cosφ)
+    const o: Orbit = orbit.current ?? {
+      target: new THREE.Vector3(),
+      polar: Math.acos(Math.min(1, Math.max(-1, rel.y / (rel.length() || 1)))),
+      azimuth: Math.atan2(-rel.x, rel.z),
+      place: () => undefined,
+    };
+    orbit.current = o;
+    const target = o.target;
     const maxPolar = S.orbit.maxPolarDeg * RAD;
     const fwd = new THREE.Vector3();
     const right = new THREE.Vector3();
     const place = () => {
-      polar = Math.min(maxPolar, Math.max(1e-3, polar));
-      fwd.set(Math.sin(azimuth), 0, -Math.cos(azimuth));
-      camera.position.set(target.x - fwd.x * R * Math.sin(polar), R * Math.cos(polar), target.z - fwd.z * R * Math.sin(polar));
-      camera.up.copy(UP);
+      o.polar = Math.min(maxPolar, Math.max(1e-3, o.polar));
+      const d = Math.hypot(target.x, target.z);
+      if (d > limits.panM) target.multiplyScalar(limits.panM / d);
+      fwd.set(Math.sin(o.azimuth), 0, -Math.cos(o.azimuth));
+      camera.position.set(target.x - fwd.x * R * Math.sin(o.polar), R * Math.cos(o.polar), target.z - fwd.z * R * Math.sin(o.polar));
+      // straight down, screen up is the view's forward (north for the top view)
+      if (o.polar < 0.01) camera.up.copy(fwd);
+      else camera.up.copy(UP);
       camera.lookAt(target.x, 0, target.z);
       camera.zoom = Math.min(limits.maxZoom, Math.max(limits.minZoom, camera.zoom));
       camera.updateProjectionMatrix();
       invalidate();
     };
+    o.place = place;
     place();
     type Drag = { mode: "rotate" | "pan" | "zoom"; x: number; y: number };
     let drag: Drag | null = null;
@@ -434,17 +458,15 @@ function RhinoControls({ limits }: { limits: ReturnType<typeof viewLimits> }) {
       drag.x = e.clientX;
       drag.y = e.clientY;
       if (drag.mode === "rotate") {
-        azimuth += dx * 0.006;
-        polar -= dy * 0.006;
+        o.azimuth += dx * 0.006;
+        o.polar -= dy * 0.006;
       } else if (drag.mode === "pan") {
         // the ground point under the cursor follows it
-        fwd.set(Math.sin(azimuth), 0, -Math.cos(azimuth));
-        right.set(Math.cos(azimuth), 0, Math.sin(azimuth));
+        fwd.set(Math.sin(o.azimuth), 0, -Math.cos(o.azimuth));
+        right.set(Math.cos(o.azimuth), 0, Math.sin(o.azimuth));
         const k = 1 / camera.zoom;
-        const cos = Math.max(0.2, Math.cos(polar));
+        const cos = Math.max(0.2, Math.cos(o.polar));
         target.addScaledVector(right, -dx * k).addScaledVector(fwd, (dy * k) / cos);
-        const d = Math.hypot(target.x, target.z);
-        if (d > limits.panM) target.multiplyScalar(limits.panM / d);
       } else {
         camera.zoom *= Math.exp(-dy * 0.006);
       }
@@ -475,7 +497,148 @@ function RhinoControls({ limits }: { limits: ReturnType<typeof viewLimits> }) {
       dom.removeEventListener("wheel", wheel);
       dom.removeEventListener("contextmenu", menu);
     };
-  }, [camera, dom, invalidate, limits]);
+  }, [camera, dom, invalidate, limits, orbit]);
+  return null;
+}
+
+type Affine = ReturnType<typeof sceneToModel>;
+
+/** Scene-frame world (x east, y up, z = −north) → model world, as a matrix (see `sceneToModel`). */
+function affineMatrix(m: Affine): THREE.Matrix4 {
+  return new THREE.Matrix4().set(m.a, 0, -m.b, m.e, 0, 1, 0, 0, -m.c, 0, m.d, -m.f, 0, 0, 0, 1);
+}
+
+/** World point of the scene frame → frame px of this camera, for a frame of `width` × `height` CSS px. */
+function sceneProject(camera: THREE.Camera, width: number, height: number, m: Affine): Project {
+  const v = new THREE.Vector3();
+  return (p: P3) => {
+    const y = -p[2];
+    v.set(m.a * p[0] + m.b * y + m.e, p[1], -(m.c * p[0] + m.d * y + m.f)).project(camera);
+    return { x: ((v.x + 1) / 2) * width, y: ((1 - v.y) / 2) * height, visible: v.z > -1 && v.z < 1 };
+  };
+}
+
+/**
+ * The shown option: the studio's blue mass with white edges, built in the scene frame and placed with one matrix. It rises
+ * with the people at the end of the intro. In the line look nothing else is lit, so it brings its own light.
+ */
+function Proposal({ volumes, affine, lit, clock, delayMs }: { volumes: Volume[]; affine: Affine; lit: boolean; clock: Clock; delayMs: number }) {
+  const matrix = useMemo(() => affineMatrix(affine), [affine]);
+  const gl = useThree((s) => s.gl);
+  const rise = useRef<THREE.Group>(null);
+  const stood = useRef(false);
+  // the shadow map is frozen once the model stands (ShadowSettle): redraw it when the mass changes
+  useEffect(() => {
+    gl.shadowMap.needsUpdate = true;
+  }, [volumes, lit, gl]);
+  useFrame(() => {
+    const g = rise.current;
+    if (!g) return;
+    const k = easeCubicOut(at(clock.elapsed(), delayMs, S.rise.ms));
+    g.visible = k > 0;
+    g.scale.y = Math.max(0.001, k);
+    if (!stood.current && k > 0) gl.shadowMap.needsUpdate = true;
+    if (k >= 1) stood.current = true;
+  });
+  return (
+    <group matrixAutoUpdate={false} matrix={matrix}>
+      <group ref={rise} visible={false}>
+        <ProposalVolume volumes={volumes} style={defaultRenderStyle.proposal} look={lit ? "sun" : "lines"} />
+      </group>
+    </group>
+  );
+}
+
+/** Draws the label layer onto a 2D canvas laid over the model, every frame, so it never lags the camera. */
+function LabelLayer({ canvas, overlay, affine, style }: { canvas: { current: HTMLCanvasElement | null }; overlay: Overlay; affine: Affine; style: RenderStyle["labels"] }) {
+  useFrame((state) => {
+    const el = canvas.current;
+    if (!el) return;
+    const { width, height } = state.size;
+    const dpr = state.viewport.dpr;
+    const [w, h] = [Math.round(width * dpr), Math.round(height * dpr)];
+    if (el.width !== w || el.height !== h) [el.width, el.height] = [w, h];
+    const ctx = el.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    // the placeholder watermark goes into exports only, not over the model on screen
+    drawOverlay(ctx, { ...overlay, watermark: false }, sceneProject(state.camera, width, height, affine), { width, height }, dpr, style);
+  });
+  return null;
+}
+
+/** The window's white edge wash (the `.site-wash` layer), painted into a capture `size` px square, `width` px deep. */
+function paintWash(ctx: CanvasRenderingContext2D, size: number, width: number) {
+  const edges: [number, number, number, number][] = [
+    [0, 0, 0, width],
+    [0, size, 0, size - width],
+    [0, 0, width, 0],
+    [size, 0, size - width, 0],
+  ];
+  for (const [x0, y0, x1, y1] of edges) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    for (let i = 0; i <= 8; i++) g.addColorStop(i / 8, `rgba(255,255,255,${((1 - i / 8) ** 2).toFixed(4)})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+}
+
+/**
+ * The model's view and renderer for the studio (siteView.ts): read and set the camera, and capture the square at any
+ * size. A capture draws the same frame at a higher pixel ratio, so lines, dots and labels keep their weight relative to
+ * the image, then the wash and the labels go on top.
+ */
+function ViewApi({ orbit, limits, affine, overlay, labels }: { orbit: { current: Orbit | null }; limits: ReturnType<typeof viewLimits>; affine: Affine | null; overlay: Overlay | null; labels: RenderStyle["labels"] }) {
+  const get = useThree((s) => s.get);
+  const latest = useRef({ affine, overlay, labels });
+  latest.current = { affine, overlay, labels };
+  useEffect(() => {
+    const camera = () => get().camera as THREE.OrthographicCamera;
+    registerSiteView({
+      get: (): SiteView => {
+        const o = orbit.current;
+        return { azimuth: o?.azimuth ?? 0, polar: o?.polar ?? 0, zoom: camera().zoom / limits.endZoom, target: [o?.target.x ?? 0, o?.target.z ?? 0] };
+      },
+      set: (v) => {
+        const o = orbit.current;
+        if (!o) return;
+        o.azimuth = v.azimuth;
+        o.polar = v.polar;
+        o.target.set(v.target[0], 0, v.target[1]);
+        camera().zoom = v.zoom * limits.endZoom;
+        o.place();
+      },
+      capture: async ({ size, mime }) => {
+        const { overlay: ov, labels: ls, affine: af } = latest.current;
+        await Promise.all(overlayFonts(ls).map((f) => document.fonts.load(f)));
+        const { gl, scene, size: css, invalidate } = get();
+        const before = gl.getPixelRatio();
+        const k = size / css.width;
+        const out = document.createElement("canvas");
+        [out.width, out.height] = [size, size];
+        const ctx = out.getContext("2d");
+        if (!ctx) throw new Error("No 2D canvas available for the image.");
+        try {
+          gl.setPixelRatio(k);
+          const buffer = gl.getContext();
+          if (buffer.drawingBufferWidth < Math.floor(css.width * k) - 1) {
+            throw new Error(`This browser limits the render to ${buffer.drawingBufferWidth} px (asked ${size}). Use a smaller resolution.`);
+          }
+          gl.shadowMap.needsUpdate = true;
+          gl.render(scene, camera());
+          // read in the same task as the render: the drawing buffer is not kept
+          ctx.drawImage(gl.domElement, 0, 0, size, size);
+        } finally {
+          gl.setPixelRatio(before);
+          invalidate();
+        }
+        paintWash(ctx, size, S.washPx * k);
+        if (ov && af) drawOverlay(ctx, ov, sceneProject(camera(), css.width, css.height, af), { width: css.width, height: css.height }, k, ls);
+        return new Promise<Blob>((resolve, reject) => out.toBlob((b) => (b ? resolve(b) : reject(new Error("Image encoding failed (image too large?)."))), mime, 0.9));
+      },
+    });
+    return () => registerSiteView(null);
+  }, [get, orbit, limits]);
   return null;
 }
 
@@ -565,7 +728,11 @@ export default function SiteModel(props: SiteModelProps) {
 
 function ModelView(props: SiteModelProps & { half: number; model: ModelData; buildings: BuildingArrays }) {
   const { plot, box, dpr, startPxPerM, dotFade, finalSize, envelope, origin, start, reducedMotion, onReady, onLive, half, model, buildings } = props;
+  const { proposal = null, showEnvelope = true, overlay = null, labels = defaultRenderStyle.labels } = props;
   const ghost = useMemo(() => (envelope && origin ? envelopeRings(envelope, origin, model.local).filter((r) => r.length >= 3) : []), [envelope, origin, model]);
+  const affine = useMemo(() => (origin ? sceneToModel(origin, model.local) : null), [origin, model]);
+  const orbitState = useRef<Orbit | null>(null);
+  const labelCanvas = useRef<HTMLCanvasElement>(null);
   const times = useMemo(() => sequence(ghost.length > 0), [ghost.length]);
   const startRef = useRef(start);
   startRef.current = start;
@@ -578,32 +745,7 @@ function ModelView(props: SiteModelProps & { half: number; model: ModelData; bui
   // no frame (not even the hidden first one) until the shaders are compiled
   const [compiled, setCompiled] = useState(false);
   const onCompiled = useMemo(() => () => setCompiled(true), []);
-  const [lookId, setLookId] = useState<string>(() => {
-    try {
-      return localStorage.getItem(LOOK_KEY) ?? LOOKS[0]!.id;
-    } catch {
-      return LOOKS[0]!.id;
-    }
-  });
-  const look = LOOKS.find((l) => l.id === lookId) ?? LOOKS[0]!;
-  const pickLook = (id: string) => {
-    setLookId(id);
-    try {
-      localStorage.setItem(LOOK_KEY, id);
-    } catch {
-      // private window: the choice just is not remembered
-    }
-  };
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-      const l = LOOKS[Number(e.key) - 1];
-      if (l) pickLook(l.id);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const look = LOOKS.find((l) => l.id === props.look) ?? LOOKS[0]!;
 
   // the walkers' graph from the streets of the model square (built off the main thread); nobody walks when they cannot be loaded
   const [graph, setGraph] = useState<Graph | null>(null);
@@ -668,21 +810,17 @@ function ModelView(props: SiteModelProps & { half: number; model: ModelData; bui
             <N8AO aoRadius={look.ao.radius} distanceFalloff={1} intensity={look.ao.intensity} color="#000000" quality="high" />
           </EffectComposer>
         )}
-        {ghost.length > 0 && <Ghost rings={ghost} height={envelope?.maxHeight ?? null} dash={1 / limits.endZoom} clock={clock} delayMs={times.ghost} />}
+        {ghost.length > 0 && showEnvelope && <Ghost rings={ghost} height={envelope?.maxHeight ?? null} dash={1 / limits.endZoom} clock={clock} delayMs={times.ghost} />}
+        {!look.light && <ProposalLight />}
+        {proposal && affine && <Proposal volumes={proposal} affine={affine} lit={!!look.light} clock={clock} delayMs={times.people} />}
         {graph && <People graph={graph} half={half} clock={clock} delayMs={times.people} />}
-        {orbit && <RhinoControls limits={limits} />}
+        {orbit && <RhinoControls limits={limits} orbit={orbitState} />}
+        {orbit && <ViewApi orbit={orbitState} limits={limits} affine={affine} overlay={overlay} labels={labels} />}
+        {overlay && affine && <LabelLayer canvas={labelCanvas} overlay={overlay} affine={affine} style={labels} />}
         <ShadowSettle clock={clock} doneMs={times.people} />
       </Canvas>
       <div className="site-wash" style={{ backgroundImage: wash }} />
-      {orbit && (
-        <div className="site-looks t-semimono t-label" role="group" aria-label="Lighting (trial)">
-          {LOOKS.map((l, i) => (
-            <button key={l.id} type="button" className={l.id === look.id ? "on" : undefined} aria-pressed={l.id === look.id} onClick={() => pickLook(l.id)} title={`Key ${i + 1}`}>
-              {l.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {overlay && <canvas ref={labelCanvas} className="site-labels" />}
     </div>
   );
 }

@@ -19,9 +19,11 @@ type Props<T extends string> = {
   /** Two lines, like "Zoning / and limits". */
   heading: [string, string];
   onBack?: () => void;
-  tabs: Tab<T>[];
-  tab: T;
-  onTab: (tab: T) => void;
+  /** What the header says beside the heading: the site (plot chip, address) unless given. */
+  details?: { chip: string; lines: [string, string] };
+  tabs?: Tab<T>[];
+  tab?: T;
+  onTab?: (tab: T) => void;
   children: ReactNode;
   /** The band's label line; `busy` scrambles it while a call runs. */
   status: TextPart[];
@@ -29,26 +31,43 @@ type Props<T extends string> = {
   /** The outlined button (the screen's AI or secondary action), six cells wide. */
   secondary?: Button;
   /** The blue arrow with its label: the next step. */
-  go: Button;
+  go?: Button;
 };
+
+/** The band's buttons in its one row, inside a cell of margin: the arrow at the right (5 cells, 4 in a narrow panel), the outlined button the rest. */
+export function bandButtons(band: Cells, hasSecondary: boolean, hasGo: boolean): { secondary: Cells | null; go: Cells | null } {
+  const W = band.c1 - band.c0;
+  const row = { r0: band.r0 + 1, r1: band.r0 + 2 };
+  const goCells = hasGo ? (W >= 14 ? 5 : 4) : 0;
+  const gap = hasGo && hasSecondary && W >= 13 ? 1 : 0;
+  const end = band.c1 - 1;
+  return {
+    go: hasGo ? { c0: end - goCells, c1: end, ...row } : null,
+    secondary: hasSecondary ? { c0: band.c0 + 1, c1: end - goCells - gap, ...row } : null,
+  };
+}
 
 /**
  * A studio panel: the rules window's frame (page-background window that grows from its left edge, the header with heading,
  * plot chip, back arrow and address, the bottom band with a label, an outlined button and the blue arrow), with a row of
- * three tabs under the header and a table body.
+ * tabs under the header and a table body. Fits panels 11 to 15 cells wide.
  */
-export function PanelFrame<T extends string>({ grid, panel, band: bandCells, heading, onBack, tabs, tab, onTab, children, status, busy, secondary, go }: Props<T>) {
-  const { chip, street, place } = useSiteHeader();
+export function PanelFrame<T extends string>({ grid, panel, band: bandCells, heading, onBack, details, tabs, tab, onTab, children, status, busy, secondary, go }: Props<T>) {
+  const site = useSiteHeader();
+  const chip = details?.chip ?? site.chip;
+  const [street, place] = details?.lines ?? [site.street, site.place];
   const win = boxStyle(grid, panel);
   const rel = (b: BoxStyle): BoxStyle => ({ left: b.left - win.left, top: b.top - win.top, width: b.width, height: b.height });
   const top = rel(boxStyle(grid, { c0: panel.c0, c1: panel.c1, r0: panel.r0, r1: bandCells.r0 }));
   const band = rel(boxStyle(grid, bandCells));
-  const secondaryBox = rel(boxStyle(grid, { c0: bandCells.c0 + 1, c1: bandCells.c0 + 8, r0: bandCells.r0 + 1, r1: bandCells.r0 + 2 }));
-  const goBox = rel(boxStyle(grid, { c0: bandCells.c0 + 9, c1: bandCells.c0 + 14, r0: bandCells.r0 + 1, r1: bandCells.r0 + 2 }));
-  const statusStyle: CSSProperties = { left: secondaryBox.left, top: secondaryBox.top - LABEL_GAP - LABEL_LINE, height: LABEL_LINE, width: goBox.left + goBox.width - secondaryBox.left, whiteSpace: "pre", overflow: "hidden" };
+  const cellsOf = bandButtons(bandCells, !!secondary, !!go);
+  const secondaryBox = cellsOf.secondary && rel(boxStyle(grid, cellsOf.secondary));
+  const goBox = cellsOf.go && rel(boxStyle(grid, cellsOf.go));
+  const line = rel(boxStyle(grid, { c0: bandCells.c0 + 1, c1: bandCells.c1 - 1, r0: bandCells.r0 + 1, r1: bandCells.r0 + 2 }));
+  const statusStyle: CSSProperties = { left: line.left, top: line.top - LABEL_GAP - LABEL_LINE, height: LABEL_LINE, width: line.width, whiteSpace: "pre", overflow: "hidden" };
 
   return (
-    <div className="box rules-grow studio-panel" style={win}>
+    <div className={`box rules-grow studio-panel${panel.c1 - panel.c0 < 13 ? " narrow" : ""}`} style={win}>
       <section className="box window rules-window" style={{ left: 0, top: 0, width: win.width, height: win.height }} aria-label={heading.join(" ")} />
       <div className="box rules-top" style={{ left: top.left + 1, top: top.top + 1, width: top.width - 2, height: top.height - 2 }}>
         <header className="rules-header">
@@ -74,17 +93,19 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
             </div>
           </div>
         </header>
-        <ul className="panel-tabs t-semimono" role="tablist">
-          {tabs.map((t) => (
-            <li key={t.id} role="presentation">
-              <button type="button" role="tab" aria-selected={t.id === tab} onClick={() => onTab(t.id)}>
-                {t.label}
-                {t.count ? <span className="count">{t.count}</span> : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <ul className="panel-body t-semimono" role="tabpanel">
+        {tabs && (
+          <ul className="panel-tabs t-semimono" role="tablist">
+            {tabs.map((t) => (
+              <li key={t.id} role="presentation">
+                <button type="button" role="tab" aria-selected={t.id === tab} onClick={() => onTab?.(t.id)}>
+                  {t.label}
+                  {t.count ? <span className="count">{t.count}</span> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <ul className="panel-body t-semimono" role={tabs ? "tabpanel" : undefined}>
           {children}
         </ul>
       </div>
@@ -92,16 +113,18 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
       <label className="box t-semimono t-label rules-count on" style={statusStyle} aria-live="polite">
         <ShuffleText parts={status} scrambling={busy} />
       </label>
-      {secondary && (
+      {secondary && secondaryBox && (
         <button type="button" className="box rules-fill t-semimono t-input" style={secondaryBox} disabled={secondary.disabled} title={secondary.title} onClick={secondary.onClick}>
           {secondary.label}
           {secondary.icon && <img src={secondary.icon} alt="" width={12} height={12} />}
         </button>
       )}
-      <button type="button" className={`box go rules-go${go.disabled ? "" : " ready"}`} style={goBox} disabled={go.disabled} title={go.title} aria-label={go.label} onClick={go.onClick}>
-        <span className="go-label t-semimono">{go.label}</span>
-        <img src={arrowUrl} alt="" />
-      </button>
+      {go && goBox && (
+        <button type="button" className={`box go rules-go${go.disabled ? "" : " ready"}`} style={goBox} disabled={go.disabled} title={go.title} aria-label={go.label} onClick={go.onClick}>
+          <span className="go-label t-semimono">{go.label}</span>
+          <img src={arrowUrl} alt="" />
+        </button>
+      )}
     </div>
   );
 }

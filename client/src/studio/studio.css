@@ -4,146 +4,6 @@
  * the token custom properties (tokens.ts); the two greys of the rules table (#d8d8d8 chips, #e5e5e5 sub-rows) as there.
  */
 
-/* ---- viewer window ---- */
-.landing.studio .viewer-canvas {
-  position: absolute;
-  overflow: hidden;
-  transition: opacity 300ms linear;
-}
-
-.landing.studio .viewer-canvas.waiting {
-  opacity: 0;
-}
-
-/* Present: the design frame sits on the page background, inside the viewer window */
-.landing.studio .viewer-canvas.framing {
-  background: var(--background);
-}
-
-.landing.studio .viewer-frame {
-  position: absolute;
-  outline: 1px solid var(--stroke);
-  background: var(--white);
-}
-
-.landing.studio .viewer-tools {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  gap: 4px;
-}
-
-.landing.studio .viewer-tools button {
-  height: 20px;
-  padding: 0 6px;
-  border: 1px solid var(--stroke);
-  background: var(--white);
-  color: var(--black);
-  font-size: 10px;
-  line-height: 18px;
-  letter-spacing: -0.1px;
-  cursor: pointer;
-}
-
-.landing.studio .viewer-tools button:hover {
-  border-color: var(--blue);
-  color: var(--blue);
-}
-
-.landing.studio .viewer-tools button[aria-pressed="true"] {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: var(--white);
-}
-
-.landing.studio .viewer-flag {
-  position: absolute;
-  left: 16px;
-  top: 16px;
-}
-
-.landing.studio .viewer-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  line-height: 16px;
-  letter-spacing: -0.12px;
-  color: var(--stroke);
-}
-
-/* the band's option buttons: one grid row high, adjoining (their borders share the grid lines) */
-.landing.studio .option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 7px;
-  border: 1px solid var(--stroke);
-  background: var(--background);
-  color: var(--black);
-  font-size: 12px;
-  line-height: 12px;
-  letter-spacing: -0.12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-align: left;
-  cursor: pointer;
-}
-
-.landing.studio .option .option-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.landing.studio .option .chip {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  height: 16px;
-  padding: 0 4px;
-  background: #d8d8d8;
-  font-size: 10px;
-  letter-spacing: -0.1px;
-  color: var(--black);
-}
-
-.landing.studio .option:hover {
-  color: var(--blue);
-}
-
-.landing.studio .option[aria-pressed="true"] {
-  z-index: 1; /* its blue border wins over the neighbours' grey on the shared line */
-  border-color: var(--blue);
-  background: var(--white);
-  color: var(--blue);
-}
-
-.landing.studio .option[aria-pressed="true"] .chip {
-  background: var(--blue);
-  color: var(--white);
-}
-
-.landing.studio .viewer-metrics {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  font-size: 12px;
-  line-height: 12px;
-  letter-spacing: -0.12px;
-  color: var(--stroke);
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.landing.studio .viewer-metrics b {
-  font-weight: 400;
-  color: var(--blue);
-}
-
 /* ---- panel window: header as the rules window, then tabs, a body that scrolls if it must, the band ---- */
 .landing.studio .panel-body {
   flex: 1;
@@ -165,7 +25,8 @@
 .landing.studio .panel-tabs {
   flex: none;
   display: grid;
-  grid-template-columns: 159px 160px 1fr; /* 5 cells each: the borders land on grid lines */
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
   height: 32px;
   margin: 0;
   padding: 0;
@@ -237,6 +98,24 @@
   background: var(--background);
 }
 
+/* a narrow panel (11–12 cells): the title takes four cells, the slider keeps room to move */
+.landing.studio .studio-panel.narrow .row {
+  grid-template-columns: 127px 97px 1fr;
+}
+
+.landing.studio .studio-panel.narrow .row.split {
+  grid-template-columns: 127px 97px 96px 1fr;
+}
+
+.landing.studio .studio-panel.narrow .row.wide {
+  grid-template-columns: 127px 1fr;
+}
+
+.landing.studio .studio-panel.narrow .row.full,
+.landing.studio .studio-panel.narrow .row.text {
+  grid-template-columns: 1fr;
+}
+
 .landing.studio .row.wide {
   grid-template-columns: 159px 1fr;
 }
@@ -254,7 +133,13 @@
 }
 
 .landing.studio .row .rules-title {
+  min-width: 0;
   font-size: 12px;
+}
+
+.landing.studio .row .rules-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .landing.studio .row.sub .rules-title {
@@ -727,7 +612,7 @@
   color: var(--stroke);
 }
 
-/* the panels swap with the rules window's grow; the viewer window travels from the landing's model window */
+/* the panels open with the rules window's grow, around the site model's square */
 .landing.studio .studio-panel {
   transition: opacity 300ms cubic-bezier(0.645, 0.045, 0.355, 1);
 }
@@ -745,32 +630,3 @@
   padding: 0 8px;
 }
 
-/* the viewer window's band and its contents fade in once the window has arrived */
-.landing.studio .studio-in,
-.landing.studio .option,
-.landing.studio .viewer-metrics,
-.landing.studio .viewer-tools,
-.landing.studio .viewer-flag {
-  animation: studio-in 450ms cubic-bezier(0.645, 0.045, 0.355, 1) backwards;
-}
-
-.landing.studio .viewer-frame {
-  animation: studio-in 300ms linear backwards;
-}
-
-@keyframes studio-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing.studio .studio-in,
-  .landing.studio .option,
-  .landing.studio .viewer-metrics,
-  .landing.studio .viewer-tools,
-  .landing.studio .viewer-flag,
-  .landing.studio .viewer-frame {
-    animation: none;
-  }
-}

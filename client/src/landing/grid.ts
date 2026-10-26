@@ -144,11 +144,22 @@ export type LandingLayout = {
   panelBand: Cells;
 };
 
-/** The site model window: the globe window grown to a square of its own height, centred on the page. */
+/**
+ * The square around the site model and the studio panels beside it. The square keeps the globe window's height (the
+ * reference layout), grows on big pages while both panels keep their full width, and shrinks on narrow ones so the panels
+ * keep their minimum width. Its rows stay clear of the logo, since the left panel shares the logo's columns.
+ */
+export const SQUARE = { maxSide: 25, panelMin: 11, panelMax: 15, gap: 1, bottomCells: 2 } as const;
+
+/** The site model window: the globe window grown to a square (see SQUARE), centred on the page. It stays the studio's viewport. */
 export function modelWindow(g: Grid, spec: LayoutSpec = LAYOUT): Cells {
-  const side = spec.windowRows;
+  const S = SQUARE;
+  const top = spec.logo.r1 + 1;
+  const room = (panel: number) => g.N - 2 * (panel + S.gap + EDGE_CELLS);
+  const grown = Math.min(S.maxSide, g.M - top - S.bottomCells, room(S.panelMax));
+  const side = Math.max(1, Math.min(Math.max(spec.windowRows, grown), room(S.panelMin)));
   const col = Math.max(0, Math.floor((g.N - side) / 2));
-  const row = Math.max(spec.minRow, Math.floor((g.M - spec.windowRows) / 2));
+  const row = Math.max(top, Math.floor((g.M - side) / 2));
   return cells(col, col + side, row, row + side);
 }
 
