@@ -89,6 +89,29 @@ export function roofGeometry(rings: Ring[], baseZ: number, ridgeAngle: number, r
     }
   }
   shape.dispose();
+
+  // walls under the roof along every footprint edge (gables, courtyard sides), so the roof closes the volume;
+  // an edge that crosses the ridge line is split there, where the roof line kinks
+  const EPS = 1e-6;
+  const wall = (p: [number, number], q: [number, number]) => {
+    const [hp, hq] = [lift(p)[2] - baseZ, lift(q)[2] - baseZ];
+    if (hp < EPS && hq < EPS) return;
+    positions.push(p[0], p[1], baseZ, q[0], q[1], baseZ, q[0], q[1], baseZ + hq);
+    if (hp >= EPS) positions.push(p[0], p[1], baseZ, q[0], q[1], baseZ + hq, p[0], p[1], baseZ + hp);
+  };
+  for (const ring of rings) {
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i]!;
+      const b = ring[(i + 1) % ring.length]!;
+      const [da, db] = [vOf(a) - mid, vOf(b) - mid];
+      if (da * db < 0) {
+        const t = da / (da - db);
+        const m: [number, number] = [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+        wall(a, m);
+        wall(m, b);
+      } else wall(a, b);
+    }
+  }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.computeVertexNormals();

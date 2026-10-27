@@ -14,7 +14,7 @@ import type { TextPart } from "../landing/ShuffleText";
 import { OPTION_IDS, isPreset, optionText, useMassing, useMassingStore, useOptionParams, useOptionText, type OptionId } from "../state/massingStore";
 import { useAiStore, type Call } from "../state/aiStore";
 import { PanelFrame, type Tab } from "./PanelFrame";
-import { ActionRow, CheckRow, Note, PickRow, Section, SegmentRow, SliderRow, ValueRow } from "./rows";
+import { ActionRow, CheckTag, Note, PairRow, PickRow, Section, SegmentRow, SliderRow, type PairCell } from "./rows";
 import type { PanelCells } from "./layout";
 
 const PRIORITY_LABELS: Record<PriorityKey, string> = { units: "Homes", daylight: "Daylight", lowProfile: "Low profile", openSpace: "Open space", simplicity: "Simplicity" };
@@ -32,13 +32,15 @@ const RULE_ICONS: Record<string, string> = {
   "Inside buildable envelope": areaIcon,
 };
 
-/** Rule names short enough for the narrow panels' title cells (the full name is in the row's tooltip detail). */
+/** Rule names short enough for a half row under "Rules" (the full name is in the hover detail). */
 const RULE_SHORT: Record<string, string> = {
   "Allowed functions": "Functions",
-  "Max building height": "Max height",
-  "Max gutter height": "Max gutter",
-  "Max coverage (0–1)": "Max coverage",
-  "Inside buildable envelope": "In envelope",
+  "Max building height": "Height",
+  "Max gutter height": "Gutter",
+  "Max coverage (0–1)": "Coverage",
+  "Max FAR": "FAR",
+  "Parking norm": "Parking",
+  "Inside buildable envelope": "Envelope",
 };
 
 const fmt = (x: number, digits = 1) => x.toFixed(digits);
@@ -124,7 +126,6 @@ function CallNote({ call }: { call: Call<unknown> }) {
 /** The option's shape: typology, floors, depth, coverage, heights, orientation, roof. Sliders only, no AI. The same rows on every tab. */
 function ShapeRows({ id, params }: { id: OptionId; params: MassingParams }) {
   const setParams = useMassingStore((s) => s.setParams);
-  const resetOption = useMassingStore((s) => s.resetOption);
   const p = params;
   const set = (patch: Partial<MassingParams>) => setParams(id, patch);
   return (
@@ -162,7 +163,6 @@ function ShapeRows({ id, params }: { id: OptionId; params: MassingParams }) {
           { value: "pitched", text: "Pitched" },
         ]}
       />
-      <ActionRow icon={overrideIcon} label="Reset" onClick={() => resetOption(id)} note={<span className="muted">{isPreset(id) ? "to the preset" : "to the AI's proposal"}</span>} />
     </>
   );
 }
@@ -174,7 +174,9 @@ function PresetTab({ id }: { id: OptionId }) {
   if (!option) return null;
   return (
     <>
-      <Note white>{text.intent}</Note>
+      <Note white rows2>
+        {text.intent}
+      </Note>
       <ShapeRows id={id} params={option.params} />
     </>
   );
@@ -214,6 +216,7 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
   const custom = useMassingStore((s) => s.custom);
   const directions = useAiStore((s) => s.directions.status);
   const generate = useAiStore((s) => s.generateDirections);
+  const resetOption = useMassingStore((s) => s.resetOption);
   const status = useStatus(active);
   const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => (isPreset(id) ? { id, label: optionText(id, custom).name } : { id, label: "Your brief" }));
   return (
@@ -233,34 +236,34 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
           ? { label: directions === "loading" ? "Generating…" : "Generate option", icon: suggestIcon, disabled: directions === "loading", onClick: () => void generate(), title: "The AI proposes one option from the brief and the priorities" }
           : undefined
       }
+      go={status ? undefined : { label: "Reset", icon: overrideIcon, white: true, onClick: () => resetOption(active), title: isPreset(active) ? "Back to the preset" : "Back to the AI's proposal" }}
     >
       {active === "custom" ? <CustomTab /> : <PresetTab id={active} />}
     </PanelFrame>
   );
 }
 
-/** What the option gives up (the preset's words, or the AI's), and whether the user changed it. */
-function DirectionNote({ id, edited }: { id: OptionId; edited: boolean }) {
+/** What the option gives up (the preset's words, or the AI's): two grid rows, three lines. */
+function TradeOffs({ id }: { id: OptionId }) {
   const text = useOptionText(id);
+  if (!text.tradeOffs.length) return null;
   return (
-    <>
-      {text.tradeOffs.length > 0 && (
-        <Note small>
-          <ul>
-            {text.tradeOffs.map((t, i) => (
-              <li key={i}>
-                <span>{t}</span>
-              </li>
-            ))}
-          </ul>
-        </Note>
-      )}
-      {edited && <Note small accent>Changed by hand since {isPreset(id) ? "the preset" : "the AI proposed it"}.</Note>}
-    </>
+    <Note small rows2>
+      <ul>
+        {text.tradeOffs.slice(0, 3).map((t, i) => (
+          <li key={i}>
+            <span title={t}>{t}</span>
+          </li>
+        ))}
+      </ul>
+    </Note>
   );
 }
 
-/** The option's computed numbers (never the model's) and the rule check. */
+/** Pairs of cells, two to a row. */
+const pairs = <T,>(xs: T[]): [T, T?][] => Array.from({ length: Math.ceil(xs.length / 2) }, (_, i) => [xs[2 * i]!, xs[2 * i + 1]]);
+
+/** The option's computed numbers (never the model's) and the rule check, two to a row so the panel never scrolls. */
 function OptionDetails({ id }: { id: OptionId }) {
   const result = useMassing(id);
   const option = useOptionParams(id);
@@ -273,20 +276,33 @@ function OptionDetails({ id }: { id: OptionId }) {
     );
   if (!result) return <Note muted>No massing yet: the site and its rules are still loading.</Note>;
   const m = result.metrics;
+  const numbers: PairCell[] = [
+    { icon: areaIcon, label: "Footprint", value: `${fmt(m.footprint, 0)} m²` },
+    { icon: areaIcon, label: "GFA", value: `${fmt(m.gfa, 0)} m²`, detail: "Gross floor area" },
+    { icon: coverageIcon, label: "Coverage", value: fmt(m.coverage, 2) },
+    { icon: farIcon, label: "FAR", value: fmt(m.far, 2), detail: "Floor area ratio" },
+    { icon: heightIcon, turned: true, label: "Height", value: `${fmt(m.height)} m` },
+    { icon: heightIcon, turned: true, label: "Floors", value: m.floors },
+    { icon: functionsIcon, label: "Homes", value: m.estUnits, detail: `Estimated; target ${targetUnits}` },
+    { icon: subIcon, label: "Sun score", value: fmt(m.facadeSunScore, 2), detail: "1 = long sides face south" },
+  ];
+  const rules: PairCell[] = result.compliance.map((c) => ({
+    icon: RULE_ICONS[c.rule],
+    label: RULE_SHORT[c.rule] ?? c.rule.replace(" (0–1)", ""),
+    value: <CheckTag status={c.status} />,
+    detail: `${c.rule}: ${c.detail}`,
+    tag: true,
+  }));
   return (
     <>
-      <DirectionNote id={id} edited={option.edited} />
+      <TradeOffs id={id} />
       <Section label="Parameters" />
-      <ValueRow icon={areaIcon} label="Footprint" value={`${fmt(m.footprint, 0)} m²`} />
-      <ValueRow icon={areaIcon} label="GFA" value={`${fmt(m.gfa, 0)} m²`} note={<span className="muted">gross floor area</span>} />
-      <ValueRow icon={coverageIcon} label="Coverage" value={fmt(m.coverage, 2)} />
-      <ValueRow icon={farIcon} label="FAR" value={fmt(m.far, 2)} note={<span className="muted">floor area ratio</span>} />
-      <ValueRow icon={heightIcon} turned label="Height" value={`${fmt(m.height)} m`} note={`${m.floors} ${m.floors === 1 ? "floor" : "floors"}`} />
-      <ValueRow icon={functionsIcon} label="Homes (est.)" value={m.estUnits} note={<span className="muted">target {targetUnits}</span>} />
-      <ValueRow icon={subIcon} label="Sun score" value={fmt(m.facadeSunScore, 2)} note={<span className="muted">1 = long sides face south</span>} />
+      {pairs(numbers).map((p, i) => (
+        <PairRow key={i} cells={p} />
+      ))}
       <Section label="Rules" />
-      {result.compliance.map((c) => (
-        <CheckRow key={c.rule} icon={RULE_ICONS[c.rule]} label={RULE_SHORT[c.rule] ?? c.rule.replace(" (0–1)", "")} status={c.status} detail={c.detail} />
+      {pairs(rules).map((p, i) => (
+        <PairRow key={i} cells={p} />
       ))}
     </>
   );
@@ -311,7 +327,8 @@ export function OptionInfo({ grid, cells, onPresent }: { grid: Grid; cells: Pane
       panel={cells.panel}
       band={cells.band}
       heading={twoLines(text.name)}
-      details={{ chip, lines: ["", ""] }}
+      details={{ chip }}
+      fit
       go={{ label: "Export", onClick: onPresent, disabled: !result }}
     >
       <OptionDetails id={active} />

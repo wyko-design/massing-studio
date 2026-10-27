@@ -167,6 +167,25 @@ export function ValueRow({ icon, label, value, note, unknown, sub, turned }: { i
   );
 }
 
+/** One half of a paired row: a title and its value (a number, a tag). The detail shows on hover. */
+export type PairCell = { icon?: string; turned?: boolean; label: string; value: ReactNode; detail?: string; tag?: boolean };
+
+/** Two title · value pairs in one row (3 + 2 and 3 + 3 cells), for read-outs that must fit a panel without scrolling. */
+export function PairRow({ cells }: { cells: [PairCell, PairCell?] }) {
+  return (
+    <li className="row pair">
+      {cells.map((c, i) =>
+        c ? (
+          <div key={i} className="pair-half" title={c.detail}>
+            <Title icon={c.icon} label={c.label} turned={c.turned} />
+            <div className={c.tag ? "cell-value tag" : "cell-value static t-semimono"}>{c.value}</div>
+          </div>
+        ) : null,
+      )}
+    </li>
+  );
+}
+
 export type CheckStatus = "pass" | "fail" | "unknown";
 const STATUS_WORDS: Record<CheckStatus, string> = { pass: "PASS", fail: "FAIL", unknown: "UNKNOWN" };
 
@@ -210,8 +229,8 @@ export function ActionRow({ icon, label, onClick, disabled, note }: { icon?: str
 }
 
 /** Free text in the table. */
-export function Note({ children, small, white, accent, muted }: { children: ReactNode; small?: boolean; white?: boolean; accent?: boolean; muted?: boolean }) {
-  const cls = ["note", "t-semimono", small && "small", white && "white", accent && "accent", muted && "muted"].filter(Boolean).join(" ");
+export function Note({ children, small, white, accent, muted, rows2 }: { children: ReactNode; small?: boolean; white?: boolean; accent?: boolean; muted?: boolean; /** Exactly two grid rows (three lines, the rest cut). */ rows2?: boolean }) {
+  const cls = ["note", "t-semimono", small && "small", white && "white", accent && "accent", muted && "muted", rows2 && "rows2"].filter(Boolean).join(" ");
   return <li className={cls}>{children}</li>;
 }
 

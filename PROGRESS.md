@@ -1035,3 +1035,11 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
 - **Checked:** 443 tests, typecheck, build; browser 1440×928, no tab label overflows (70 px tabs).
 - **Deviations from SPEC.md / CLAUDE.md:** clamps and assumptions are no longer shown in the studio (still recorded and printed in the PDF report); the "indicative" note is gone from the Directions panel (the PDF keeps its disclaimer).
 - **Next:** further right-panel or Present changes from the user.
+
+## Closed pitched roofs; option panel fits without scrolling; Reset in the band (2026-10-27)
+- **Built:**
+  - `roofGeometry` (`client/src/viewer/geometry.ts`) adds vertical walls under the roof along every footprint edge (gables, courtyard and L-block inner sides), split where an edge crosses the ridge line, so a pitched mass is closed. Tests: gable areas and height, no wall on the eaves, an L-shape whose only open edges lie on the eaves (closed by the box below).
+  - Right panel never scrolls (`PanelFrame fit`): trade-offs as an exact two-row note (`Note rows2`: three 16 px lines, longer text cut), "Parameters" and "Rules" as `PairRow`s, two title · value pairs per row (columns at 3 / 5 / 8 cells, on the grid lines); 8 numbers in 4 rows (footprint, GFA, coverage, FAR, height, floors, homes, sun score), up to 8 rules in 4 rows with short names (Functions, Height, Gutter, Coverage, FAR, Parking, Envelope; full rule and detail on hover). 11 of the 13 body rows at 1440×928. The header shows only the chip, vertically centred (`details` without lines).
+  - Left panel: Reset is a white button in the arrow's place of the band (`go.white`, reset icon); the Reset row is gone. The band shows on every tab (Reset), or with "Generate option" on Your brief before an option exists. The preset description is an exact two-row white note.
+- **Checked:** 446 tests (+3 roof), typecheck, build; browser 1440×928: body 416 px, content 416 px, no label cut, chip centred.
+- **Open issues:** on smaller pages (square < 19 cells, e.g. 1280×800) the right panel body has fewer than 11 rows and the last rule rows are cut rather than scrolled. Pitched roofs only checked by tests and at small scale on the placeholder plot.

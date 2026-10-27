@@ -12,7 +12,7 @@ const DESCENDER = 4;
 
 export type Tab<T extends string> = { id: T; label: string; count?: number };
 
-type Button = { label: string; icon?: string; onClick: () => void; disabled?: boolean; title?: string };
+type Button = { label: string; icon?: string; onClick: () => void; disabled?: boolean; title?: string; /** The arrow's place, but a white button (its icon instead of the arrow). */ white?: boolean };
 
 type Props<T extends string> = {
   grid: Grid;
@@ -21,12 +21,14 @@ type Props<T extends string> = {
   /** Two lines, like "Zoning / and limits". */
   heading: [string, string];
   onBack?: () => void;
-  /** What the header says beside the heading: the site (plot chip, address) unless given. */
-  details?: { chip: string; lines: [string, string] };
+  /** What the header says beside the heading: the site (plot chip, address) unless given; without lines only the chip, centred. */
+  details?: { chip: string; lines?: [string, string] };
   tabs?: Tab<T>[];
   tab?: T;
   onTab?: (tab: T) => void;
   children: ReactNode;
+  /** The body never scrolls: what does not fit is cut (the content is planned to fit). */
+  fit?: boolean;
   /** The band's label line; `busy` scrambles it while a call runs. No label, button or arrow = no band: the body runs to the bottom. */
   status?: TextPart[];
   busy?: boolean;
@@ -54,9 +56,10 @@ export function bandButtons(band: Cells, hasSecondary: boolean, hasGo: boolean):
  * plot chip, back arrow and address, the bottom band with a label, an outlined button and the blue arrow), with a row of
  * tabs under the header and a table body. Fits panels 11 to 15 cells wide.
  */
-export function PanelFrame<T extends string>({ grid, panel, band: bandCells, heading, onBack, details, tabs, tab, onTab, children, status, busy, secondary, go }: Props<T>) {
+export function PanelFrame<T extends string>({ grid, panel, band: bandCells, heading, onBack, details, tabs, tab, onTab, children, fit, status, busy, secondary, go }: Props<T>) {
   const site = useSiteHeader();
   const chip = details?.chip ?? site.chip;
+  const chipOnly = !!details && !details.lines;
   const [street, place] = details?.lines ?? [site.street, site.place];
   const win = boxStyle(grid, panel);
   const rel = (b: BoxStyle): BoxStyle => ({ left: b.left - win.left, top: b.top - win.top, width: b.width, height: b.height });
@@ -81,19 +84,21 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
           </h2>
           <div className="rules-details">
             <span className="rules-chip t-semimono">{chip}</span>
-            <div className="rules-where">
-              <button type="button" className="rules-back" aria-label="Back" disabled={!onBack} onClick={onBack} style={onBack ? undefined : { visibility: "hidden" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
-                  <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
-                  <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
-                </svg>
-              </button>
-              <span className="rules-address t-semimono">
-                {street}
-                <br />
-                {place}
-              </span>
-            </div>
+            {!chipOnly && (
+              <div className="rules-where">
+                <button type="button" className="rules-back" aria-label="Back" disabled={!onBack} onClick={onBack} style={onBack ? undefined : { visibility: "hidden" }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
+                    <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+                    <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <span className="rules-address t-semimono">
+                  {street}
+                  <br />
+                  {place}
+                </span>
+              </div>
+            )}
           </div>
         </header>
         {tabs && (
@@ -108,7 +113,7 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
             ))}
           </ul>
         )}
-        <ul className="panel-body t-semimono" role={tabs ? "tabpanel" : undefined}>
+        <ul className={`panel-body t-semimono${fit ? " fit" : ""}`} role={tabs ? "tabpanel" : undefined}>
           {children}
         </ul>
       </div>
@@ -125,9 +130,9 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
         </button>
       )}
       {go && goBox && (
-        <button type="button" className={`box go rules-go${go.disabled ? "" : " ready"}`} style={goBox} disabled={go.disabled} title={go.title} aria-label={go.label} onClick={go.onClick}>
+        <button type="button" className={`box go rules-go${go.white ? " white" : ""}${go.disabled ? "" : " ready"}`} style={goBox} disabled={go.disabled} title={go.title} aria-label={go.label} onClick={go.onClick}>
           <span className="go-label t-semimono">{go.label}</span>
-          <img src={arrowUrl} alt="" />
+          <img src={go.white && go.icon ? go.icon : arrowUrl} alt="" />
         </button>
       )}
     </div>

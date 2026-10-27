@@ -85,6 +85,10 @@
   letter-spacing: -0.1px;
 }
 
+.landing.studio .panel-body.fit {
+  overflow: hidden;
+}
+
 /* the panel's band: a second button may sit between the outlined one and the arrow */
 .landing.studio .band-link {
   display: inline-flex;
@@ -128,6 +132,31 @@
 
 .landing.studio .row.full {
   grid-template-columns: 1fr;
+}
+
+/* two title · value pairs: borders on the grid lines 3, 5 and 8 cells in (the window border takes the first pixel) */
+.landing.studio .row.pair,
+.landing.studio .studio-panel.narrow .row.pair {
+  grid-template-columns: 160px 1fr;
+}
+
+.landing.studio .row.pair .pair-half {
+  display: grid;
+  grid-template-columns: 95px 1fr;
+  min-width: 0;
+}
+
+.landing.studio .row.pair .pair-half + .pair-half {
+  grid-template-columns: 95px 1fr;
+}
+
+.landing.studio .row.pair .pair-half + .pair-half .cell-value {
+  border-right: 0;
+}
+
+.landing.studio .row.pair .cell-value.tag {
+  justify-content: center;
+  background: var(--background);
 }
 
 .landing.studio .row.split {
@@ -528,6 +557,32 @@
   letter-spacing: -0.1px;
 }
 
+/* a note that is exactly two grid rows: three lines, longer text cut, so the rows under it stay on the grid */
+.landing.studio .note.rows2 {
+  height: 64px;
+  padding: 7px 8px 8px;
+  overflow: hidden;
+  line-height: 16px;
+}
+
+/* running text: three lines, then an ellipsis */
+.landing.studio .note.rows2:not(:has(ul)) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.landing.studio .note.rows2 li + li {
+  margin-top: 0;
+}
+
+.landing.studio .note.rows2 li > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .landing.studio .note.white {
   background: var(--white);
 }
@@ -634,5 +689,19 @@
 .landing.studio .rules-go {
   justify-content: space-between;
   padding: 0 8px;
+}
+
+/* the arrow's place, as a white button (Reset) */
+.landing.studio .rules-go.white {
+  background: var(--white);
+  box-shadow: inset 0 0 0 1px var(--stroke);
+}
+
+.landing.studio .rules-go.white .go-label {
+  color: var(--black);
+}
+
+.landing.studio .rules-go.white:hover:not(:disabled) .go-label {
+  color: var(--blue);
 }
 
