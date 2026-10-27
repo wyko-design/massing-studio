@@ -132,7 +132,7 @@ export function buildReportModel(input: ReportInput): ReportModel {
   const count = (o: (typeof input.options)[number], s: Compliance["status"]) => o.result.compliance.filter((c) => c.status === s).length;
   const metricRow = (label: string, f: (o: (typeof input.options)[number]) => string) => [label, ...input.options.map(f)];
   const comparison = {
-    headers: ["", ...input.options.map((o) => (o.name ? `${o.id}: ${o.name}` : `Option ${o.id}`))],
+    headers: ["", ...input.options.map((o) => o.name ?? `Option ${o.id}`)],
     rows: [
       metricRow("Typology", (o) => TYPOLOGY_LABELS[o.params.typology]),
       metricRow("Footprint", (o) => fmtM2(o.result.metrics.footprint)),

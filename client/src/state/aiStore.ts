@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import {
   DEFAULT_PRIORITIES,
-  type Direction,
   type ExtractRulesResult,
   type GenerateDirectionsRequest,
   type InterpretBriefResult,
@@ -20,12 +19,15 @@ type AiState = {
   priorities: Priorities;
   typologyHints: Typology[];
   interpret: Call<InterpretBriefResult>;
-  directions: Call<{ options: Direction[]; warnings: string[] }>;
+  /** The custom option's call. Its answer lives in the massing store (`custom`), where the user edits or deletes it. */
+  directions: Call<{ warnings: string[] }>;
   rules: Call<ExtractRulesResult>;
   setBrief: (brief: string) => void;
   setPriority: (key: keyof Priorities, value: number) => void;
   interpretBrief: () => Promise<void>;
   generateDirections: () => Promise<void>;
+  /** Deletes the custom option, so the brief can be generated again. */
+  deleteCustom: () => void;
   extractRules: () => Promise<void>;
   clearRules: () => void;
 };
@@ -78,11 +80,17 @@ export const useAiStore = create<AiState>()((set, get) => ({
     try {
       const { data, cached } = await api.generateDirections(req);
       if (useSiteStore.getState().scene !== scene) return;
-      for (const o of data.options) useMassingStore.getState().setParams(o.id, o.params);
-      set({ directions: { status: "done", result: { options: data.options, warnings: data.warnings }, error: null, cached } });
+      useMassingStore.getState().setCustom(data.option);
+      useMassingStore.getState().setActive("custom");
+      set({ directions: { status: "done", result: { warnings: data.warnings }, error: null, cached } });
     } catch (e) {
       set({ directions: fail(e) });
     }
+  },
+
+  deleteCustom: () => {
+    useMassingStore.getState().deleteCustom();
+    set({ directions: idle() });
   },
 
   extractRules: async () => {

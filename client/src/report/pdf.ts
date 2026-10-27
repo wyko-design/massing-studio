@@ -250,7 +250,7 @@ export async function buildPdf(model: ReportModel, images: ReportImages): Promis
   // 4. Options
   for (const o of model.options) {
     w.newPage();
-    w.heading(o.name === `Option ${o.id}` ? o.name : `Option ${o.id}: ${o.name}`);
+    w.heading(o.name);
     w.image(await pdf.embedJpg(images.options[o.image]!), w.width * 0.75, 340);
     if (o.intent) w.text(o.intent, { size: 10.5, gap: 4 });
     w.facts([...o.facts, ...o.metrics], 130);

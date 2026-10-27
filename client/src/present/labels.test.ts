@@ -57,7 +57,7 @@ describe("buildOverlay", () => {
   it("formats every number from the computed metrics", () => {
     const o = buildOverlay(input);
     const proposal = o.labels.find((l): l is LeaderLabel => l.kind === "leader" && l.tag)!;
-    expect(proposal.lines[0]).toBe("Option A · Quiet slab");
+    expect(proposal.lines[0]).toBe("Quiet slab");
     expect(proposal.lines[1]).toBe(`${result.metrics.floors} floors · ${Math.round(result.metrics.height * 10) / 10} m · GFA ${Math.round(result.metrics.gfa)} m²`);
     const texts = o.labels.flatMap((l) => (l.kind === "leader" ? l.lines : [l.text]));
     expect(texts).toContain("Parcel DEL00 K 2410 · 111 m²");

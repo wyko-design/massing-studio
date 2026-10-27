@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { PARAM_RANGES, PRIORITY_KEYS, PROGRAMME_RANGES, TEMPLATES, TYPOLOGY_LABELS, type MassingParams, type PriorityKey, type Programme, type Typology } from "@massing/shared";
 import areaIcon from "../landing/assets/rules/area.svg";
 import coverageIcon from "../landing/assets/rules/coverage.svg";
@@ -12,14 +11,11 @@ import subIcon from "../landing/assets/rules/sub.svg";
 import suggestIcon from "../landing/assets/rules/suggest.svg";
 import type { Grid } from "../landing/grid";
 import type { TextPart } from "../landing/ShuffleText";
-import { useEnvelope, useSiteStore } from "../state/siteStore";
-import { OPTION_IDS, useMassing, useMassingStore, type OptionId } from "../state/massingStore";
+import { useEnvelope } from "../state/siteStore";
+import { OPTION_IDS, isPreset, optionText, useMassing, useMassingStore, useOptionParams, useOptionText, type OptionId } from "../state/massingStore";
 import { useAiStore, type Call } from "../state/aiStore";
-import { usePresentStore } from "../state/presentStore";
-import { LOOKS, type LookId } from "../viewer/renderStyle";
-import { HOME_VIEW, siteView } from "../landing/model/siteView";
 import { PanelFrame, type Tab } from "./PanelFrame";
-import { ActionRow, CheckRow, Note, PickRow, Section, SegmentRow, SliderRow, ToggleRow, ValueRow } from "./rows";
+import { ActionRow, CheckRow, Note, PickRow, Section, SegmentRow, SliderRow, ValueRow } from "./rows";
 import type { PanelCells } from "./layout";
 
 const PRIORITY_LABELS: Record<PriorityKey, string> = { units: "Homes", daylight: "Daylight", lowProfile: "Low profile", openSpace: "Open space", simplicity: "Simplicity" };
@@ -126,18 +122,14 @@ function CallNote({ call }: { call: Call<unknown> }) {
   return null;
 }
 
-/** The shown option's shape: typology, floors, depth, coverage, heights, orientation, roof. Sliders only, no AI. */
-function ShapeTab({ id }: { id: OptionId }) {
-  const p = useMassingStore((s) => s.options[id]);
+/** The option's shape: typology, floors, depth, coverage, heights, orientation, roof. Sliders only, no AI. The same rows on every tab. */
+function ShapeRows({ id, params }: { id: OptionId; params: MassingParams }) {
   const setParams = useMassingStore((s) => s.setParams);
-  const setActive = useMassingStore((s) => s.setActive);
   const resetOption = useMassingStore((s) => s.resetOption);
-  const fromAi = useAiStore((s) => !!s.directions.result?.options.some((o) => o.id === id));
+  const p = params;
   const set = (patch: Partial<MassingParams>) => setParams(id, patch);
   return (
     <>
-      <Section label="Option" hint="the one on screen" />
-      <SegmentRow<OptionId> icon={subIcon} label="Editing" value={id} onChange={setActive} options={OPTION_IDS.map((o) => ({ value: o, text: `Option ${o}` }))} hideTitle />
       <Section label="Shape" hint="sliders only, no AI" />
       <PickRow
         icon={areaIcon}
@@ -171,63 +163,69 @@ function ShapeTab({ id }: { id: OptionId }) {
           { value: "pitched", text: "Pitched" },
         ]}
       />
-      <ActionRow icon={overrideIcon} label={`Reset option ${id}`} onClick={() => resetOption(id)} note={<span className="muted">{fromAi ? "to the hand-set start" : "to the start"}</span>} />
+      <ActionRow icon={overrideIcon} label="Reset" onClick={() => resetOption(id)} note={<span className="muted">{isPreset(id) ? "to the preset" : "to the AI's proposal"}</span>} />
     </>
   );
 }
 
-/** How the model is drawn: the look, the envelope, the camera back to the start. */
-function ViewTab() {
-  const look = usePresentStore((s) => s.style.look);
-  const setLook = usePresentStore((s) => s.setLook);
-  const showEnvelope = useSiteStore((s) => s.showEnvelope);
-  const setShowEnvelope = useSiteStore((s) => s.setShowEnvelope);
-  const envelope = useEnvelope();
+/** A preset tab: its idea in one line, then the sliders. */
+function PresetTab({ id }: { id: OptionId }) {
+  const option = useOptionParams(id);
+  const text = useOptionText(id);
+  if (!option) return null;
   return (
     <>
-      <Section label="Drawing" />
-      <SegmentRow<LookId> icon={subIcon} label="Look" value={look} onChange={setLook} options={(Object.keys(LOOKS) as LookId[]).map((k) => ({ value: k, text: LOOKS[k] }))} />
-      <ToggleRow icon={areaIcon} label="Envelope" on={showEnvelope && !!envelope} disabled={!envelope} onChange={setShowEnvelope} note={envelope ? "dashed, from the rules" : "rules missing"} />
-      <Section label="Camera" />
-      <ActionRow icon={overrideIcon} label="Back to the start view" onClick={() => siteView()?.set(HOME_VIEW)} />
       <Note small muted>
-        Right-drag to turn, Shift + right-drag to pan, wheel to zoom.
+        {text.intent}
       </Note>
+      <ShapeRows id={id} params={option.params} />
     </>
   );
 }
 
-/** The band's label: what the directions call is doing, else what to do next. */
-function useStatus(): { parts: TextPart[]; busy: boolean } {
+/** Custom: the brief until the AI has proposed an option, then that option's sliders (and a way to delete it and start again). */
+function CustomTab() {
+  const option = useOptionParams("custom");
+  const text = useOptionText("custom");
+  const deleteCustom = useAiStore((s) => s.deleteCustom);
+  if (!option) return <BriefTab />;
+  return (
+    <>
+      <Note small muted>
+        <b className="accent">{text.name}</b>, proposed by the AI from the brief.
+      </Note>
+      <ShapeRows id="custom" params={option.params} />
+      <ActionRow icon={overrideIcon} label="Delete option" onClick={deleteCustom} note={<span className="muted">back to the brief</span>} />
+    </>
+  );
+}
+
+/** The band's label: what the custom call is doing, else what the tab is. */
+function useStatus(id: OptionId): { parts: TextPart[]; busy: boolean } {
   const directions = useAiStore((s) => s.directions);
-  if (directions.status === "loading") return { parts: [{ text: "Generating three directions" }], busy: true };
+  const option = useOptionParams(id);
+  if (isPreset(id)) {
+    return option?.edited
+      ? { parts: [{ text: "Preset, " }, { text: "changed by hand", className: "accent" }], busy: false }
+      : { parts: [{ text: "Preset, " }, { text: "fitted to the rules", className: "accent" }], busy: false };
+  }
+  if (directions.status === "loading") return { parts: [{ text: "Generating an option from the brief" }], busy: true };
   if (directions.status === "error") return { parts: [{ text: "Could not generate: ", className: "accent" }, { text: directions.error ?? "" }], busy: false };
   const warning = directions.result?.warnings[0];
-  if (warning) return { parts: [{ text: "Note: ", className: "accent" }, { text: warning }], busy: false };
-  if (directions.status === "done") return { parts: [{ text: "3 directions", className: "accent" }, { text: directions.cached ? " (offline cache)" : " from the AI" }], busy: false };
+  if (option && warning) return { parts: [{ text: "Note: ", className: "accent" }, { text: warning }], busy: false };
+  if (option) return { parts: [{ text: "Custom option", className: "accent" }, { text: directions.cached ? " (offline cache)" : option.edited ? ", changed by hand" : " from the AI" }], busy: false };
   return { parts: [{ text: "Brief, priorities, then " }, { text: "generate", className: "accent" }], busy: false };
 }
 
-type ControlTab = "brief" | "shape" | "view";
-
-/** Directions, left of the model: what the user adjusts (the brief, the shown option's shape, the drawing). One AI call in the band. */
+/** Directions, left of the model: a tab per option (the four presets and Custom), each with the same shape sliders. The AI call is on Custom only. */
 export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells: PanelCells; onBack: () => void }) {
   const active = useMassingStore((s) => s.active);
+  const setActive = useMassingStore((s) => s.setActive);
+  const custom = useMassingStore((s) => s.custom);
   const directions = useAiStore((s) => s.directions.status);
   const generate = useAiStore((s) => s.generateDirections);
-  const [tab, setTab] = useState<ControlTab>("brief");
-  // once the AI has answered, show the shape it proposed for the option on screen
-  const was = useRef(directions);
-  useEffect(() => {
-    if (was.current === "loading" && directions === "done") setTab("shape");
-    was.current = directions;
-  }, [directions]);
-  const status = useStatus();
-  const tabs: Tab<ControlTab>[] = [
-    { id: "brief", label: "Brief" },
-    { id: "shape", label: `Option ${active}` },
-    { id: "view", label: "View" },
-  ];
+  const status = useStatus(active);
+  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => ({ id, label: optionText(id, custom).tab }));
   return (
     <PanelFrame
       grid={grid}
@@ -236,42 +234,34 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
       heading={["Design", "directions"]}
       onBack={onBack}
       tabs={tabs}
-      tab={tab}
-      onTab={setTab}
+      tab={active}
+      onTab={setActive}
       status={status.parts}
       busy={status.busy}
-      secondary={{ label: directions === "loading" ? "Generating…" : "Generate directions", icon: suggestIcon, disabled: directions === "loading", onClick: () => void generate(), title: "The AI proposes three options from the brief and the priorities" }}
+      secondary={
+        active === "custom" && !custom
+          ? { label: directions === "loading" ? "Generating…" : "Generate option", icon: suggestIcon, disabled: directions === "loading", onClick: () => void generate(), title: "The AI proposes one option from the brief and the priorities" }
+          : undefined
+      }
     >
-      {tab === "brief" ? <BriefTab /> : tab === "shape" ? <ShapeTab id={active} /> : <ViewTab />}
+      {active === "custom" ? <CustomTab /> : <PresetTab id={active} />}
     </PanelFrame>
   );
 }
 
-/** The AI's idea behind the option, when there is one. */
-function DirectionNote({ id }: { id: OptionId }) {
-  const p = useMassingStore((s) => s.options[id]);
-  const direction = useAiStore((s) => s.directions.result?.options.find((o) => o.id === id) ?? null);
-  const edited = direction ? (Object.keys(direction.params) as (keyof MassingParams)[]).some((k) => k !== "colour" && direction.params[k] !== p[k]) : false;
-  if (!direction) {
-    return (
-      <Note small muted>
-        Option {id} is a starting point. “Generate directions” lets the AI propose three, from the brief and the priorities.
-      </Note>
-    );
-  }
+/** The idea behind the option: the preset's words, or the AI's for the custom one. */
+function DirectionNote({ id, edited }: { id: OptionId; edited: boolean }) {
+  const text = useOptionText(id);
   return (
     <>
       <Note white>
-        <div className="name">
-          <span className="chip">{id}</span>
-          {direction.name}
-        </div>
-        {direction.intent}
+        <div className="name">{text.name}</div>
+        {text.intent}
       </Note>
-      {direction.tradeOffs.length > 0 && (
+      {text.tradeOffs.length > 0 && (
         <Note small>
           <ul>
-            {direction.tradeOffs.map((t, i) => (
+            {text.tradeOffs.map((t, i) => (
               <li key={i}>
                 <span>{t}</span>
               </li>
@@ -279,7 +269,7 @@ function DirectionNote({ id }: { id: OptionId }) {
           </ul>
         </Note>
       )}
-      {edited && <Note small accent>Changed by hand since the AI proposed it.</Note>}
+      {edited && <Note small accent>Changed by hand since {isPreset(id) ? "the preset" : "the AI proposed it"}.</Note>}
     </>
   );
 }
@@ -287,14 +277,21 @@ function DirectionNote({ id }: { id: OptionId }) {
 /** The option's parameters as set, its computed numbers (never the model's), the indicative rule check, the clamps and assumptions. */
 function OptionDetails({ id }: { id: OptionId }) {
   const result = useMassing(id);
-  const p = useMassingStore((s) => s.options[id]);
+  const option = useOptionParams(id);
   const envelope = useEnvelope();
   const targetUnits = useMassingStore((s) => s.programme.targetUnits);
+  if (!option)
+    return (
+      <Note small muted>
+        No custom option yet. Write a brief and set the priorities on the Custom tab, then “Generate option”.
+      </Note>
+    );
   if (!result || !envelope) return <Note muted>No massing yet: the site and its rules are still loading.</Note>;
   const m = result.metrics;
+  const p = option.params;
   return (
     <>
-      <DirectionNote id={id} />
+      <DirectionNote id={id} edited={option.edited} />
       <Section label="Parameters" hint="as set" />
       <ValueRow icon={areaIcon} label="Typology" value={TYPOLOGY_LABELS[p.typology]} />
       <ValueRow icon={heightIcon} turned label="Floors" value={p.floors} />
@@ -346,39 +343,30 @@ function OptionDetails({ id }: { id: OptionId }) {
   );
 }
 
-/** Rules an option breaks, for its tab's count. */
-function useFailing(id: OptionId): number {
-  const result = useMassing(id);
-  return result?.compliance.filter((c) => c.status === "fail").length ?? 0;
-}
-
-/** Directions, right of the model: the chosen option (a tab each), its parameters and how it meets the rules. The arrow goes on to Present. */
+/** Directions, right of the model: the option picked on the left, its parameters and how it meets the rules. The arrow goes on to Present. */
 export function OptionInfo({ grid, cells, onPresent }: { grid: Grid; cells: PanelCells; onPresent: () => void }) {
   const active = useMassingStore((s) => s.active);
-  const setActive = useMassingStore((s) => s.setActive);
-  const typology = useMassingStore((s) => s.options[active].typology);
+  const option = useOptionParams(active);
+  const text = useOptionText(active);
   const result = useMassing(active);
-  const failing: Record<OptionId, number> = { A: useFailing("A"), B: useFailing("B"), C: useFailing("C") };
   const m = result?.metrics;
-  const nowFailing = failing[active];
-  const chip = !result ? "Rules unknown" : nowFailing ? `${nowFailing} ${nowFailing === 1 ? "rule" : "rules"} not met` : "Rules met";
+  const failing = result?.compliance.filter((c) => c.status === "fail").length ?? 0;
+  const chip = !result ? "Rules unknown" : failing ? `${failing} ${failing === 1 ? "rule" : "rules"} not met` : "Rules met";
   const lines: [string, string] = m ? [`GFA ${fmt(m.gfa, 0)} m²`, `FAR ${fmt(m.far, 2)} · ${fmt(m.height)} m`] : ["", ""];
-  const status: TextPart[] = !result
-    ? [{ text: "Waiting for the site and its rules" }]
-    : nowFailing
-      ? [{ text: `Option ${active}`, className: "accent" }, { text: `, ${nowFailing} ${nowFailing === 1 ? "rule" : "rules"} not met` }]
-      : [{ text: `Option ${active}`, className: "accent" }, { text: ", no rule broken" }];
-  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => ({ id, label: `Option ${id}`, count: failing[id] || undefined }));
+  const status: TextPart[] = !option
+    ? [{ text: "No custom option yet" }]
+    : !result
+      ? [{ text: "Waiting for the site and its rules" }]
+      : failing
+        ? [{ text: text.name, className: "accent" }, { text: `, ${failing} ${failing === 1 ? "rule" : "rules"} not met` }]
+        : [{ text: text.name, className: "accent" }, { text: ", no rule broken" }];
   return (
     <PanelFrame
       grid={grid}
       panel={cells.panel}
       band={cells.band}
-      heading={[`Option ${active}`, TYPOLOGY_LABELS[typology]]}
+      heading={[isPreset(active) ? text.name : "Custom", option ? TYPOLOGY_LABELS[option.params.typology] : "not generated"]}
       details={{ chip, lines }}
-      tabs={tabs}
-      tab={active}
-      onTab={setActive}
       status={status}
       go={{ label: "Present", onClick: onPresent, disabled: !result }}
     >

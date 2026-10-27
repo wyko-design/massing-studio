@@ -74,7 +74,7 @@ if (want("briefInterpreter")) {
 let options: Direction[] | null = null;
 if (want("strategyGenerator")) {
   const r = await record("strategyGenerator", { constraints, parcel, programme, priorities, typologyHints, brief: SAMPLE_BRIEF }, generateDirections);
-  if (r.ok) options = r.data.options;
+  if (r.ok) options = [r.data.option];
 }
 
 if (want("reportWriter") && options) {

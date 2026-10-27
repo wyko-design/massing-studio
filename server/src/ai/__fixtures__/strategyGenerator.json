@@ -180,76 +180,7 @@
   "steps": [
     {
       "output": {
-        "options": [
-          {
-            "name": "Sunlit Slab",
-            "intent": "A slim east-west bar turned to face north and south, so every home gets long daylit facades. Kept at a moderate height with a pitched roof to sit gently beside the neighbours, leaving garden space around it.",
-            "tradeOffs": [
-              "Fewer homes than the programme asks",
-              "Narrow plan limits layout variety",
-              "Pitched roof adds height"
-            ],
-            "params": {
-              "typology": "slab",
-              "floors": 3,
-              "groundFloorHeight": 3.5,
-              "floorHeight": 3,
-              "depth": 9,
-              "alignment": "sun",
-              "coverageTarget": 0.5,
-              "roof": "pitched"
-            }
-          },
-          {
-            "name": "Street L-Block",
-            "intent": "An L-shaped block following the street edge, with the second wing stepping toward the back to catch more sun and give more homes. Stays at the full allowed height to test how close the brief can get to its homes target.",
-            "tradeOffs": [
-              "Tallest option towards the back neighbours",
-              "Less garden space",
-              "More complex corner and structure"
-            ],
-            "params": {
-              "typology": "l_block",
-              "floors": 4,
-              "groundFloorHeight": 3.5,
-              "floorHeight": 3,
-              "depth": 7,
-              "alignment": "street",
-              "coverageTarget": 0.6,
-              "roof": "flat"
-            }
-          },
-          {
-            "name": "Low Garden Bar",
-            "intent": "A simple low bar with a flat roof that stays modest toward the rear neighbours and frees up as much garden as possible. The plainest and cheapest form to build, with decent daylight from a shallow depth.",
-            "tradeOffs": [
-              "Fewest homes of the three",
-              "Street alignment gives less ideal sun orientation",
-              "Low height leaves allowed volume unused"
-            ],
-            "params": {
-              "typology": "slab",
-              "floors": 2,
-              "groundFloorHeight": 3.2,
-              "floorHeight": 2.9,
-              "depth": 7,
-              "alignment": "street",
-              "coverageTarget": 0.35,
-              "roof": "flat"
-            }
-          }
-        ]
-      },
-      "model": "claude-sonnet-5-5",
-      "costUsd": 0.297842
-    }
-  ],
-  "result": {
-    "ok": true,
-    "data": {
-      "options": [
-        {
-          "id": "A",
+        "option": {
           "name": "Sunlit Slab",
           "intent": "A slim east-west bar turned to face north and south, so every home gets long daylit facades. Kept at a moderate height with a pitched roof to sit gently beside the neighbours, leaving garden space around it.",
           "tradeOffs": [
@@ -265,202 +196,91 @@
             "depth": 9,
             "alignment": "sun",
             "coverageTarget": 0.5,
-            "roof": "pitched",
-            "colour": "#c23350"
-          },
-          "clamps": [],
-          "metrics": {
-            "footprint": 55.262500332576664,
-            "gfa": 165.78750099772998,
-            "far": 1.4935810900696393,
-            "coverage": 0.49786036335654654,
-            "height": 13.27594834029776,
-            "floors": 3,
-            "estUnits": 2,
-            "facadeSunScore": 0.5241145361434567
-          },
-          "compliance": [
-            {
-              "rule": "Allowed functions",
-              "status": "pass",
-              "detail": "Residential fits \"Wonen\" (assumed)"
-            },
-            {
-              "rule": "Max building height",
-              "status": "pass",
-              "detail": "13.3 m ≤ 15 m (assumed)"
-            },
-            {
-              "rule": "Max gutter height",
-              "status": "unknown",
-              "detail": "Rule unknown; the massing has 9.5 m."
-            },
-            {
-              "rule": "Max coverage (0–1)",
-              "status": "pass",
-              "detail": "0.50 ≤ 0.60 (assumed)"
-            },
-            {
-              "rule": "Max FAR",
-              "status": "unknown",
-              "detail": "Rule unknown; the massing has 1.49."
-            },
-            {
-              "rule": "Parking norm",
-              "status": "unknown",
-              "detail": "Rule unknown; parking is not modelled."
-            },
-            {
-              "rule": "Inside buildable envelope",
-              "status": "pass",
-              "detail": "Inside the setbacks envelope (assumed)"
-            }
-          ]
-        },
-        {
-          "id": "B",
-          "name": "Street L-Block",
-          "intent": "An L-shaped block following the street edge, with the second wing stepping toward the back to catch more sun and give more homes. Stays at the full allowed height to test how close the brief can get to its homes target.",
-          "tradeOffs": [
-            "Tallest option towards the back neighbours",
-            "Less garden space",
-            "More complex corner and structure"
-          ],
-          "params": {
-            "typology": "l_block",
-            "floors": 4,
-            "groundFloorHeight": 3.5,
-            "floorHeight": 3,
-            "depth": 7,
-            "alignment": "street",
-            "coverageTarget": 0.6,
-            "roof": "flat",
-            "colour": "#2f6fb0"
-          },
-          "clamps": [],
-          "metrics": {
-            "footprint": 66.49079169377276,
-            "gfa": 265.96316677509105,
-            "far": 2.396064565541361,
-            "coverage": 0.5990161413853402,
-            "height": 12.5,
-            "floors": 4,
-            "estUnits": 4,
-            "facadeSunScore": 0.5730617685827581
-          },
-          "compliance": [
-            {
-              "rule": "Allowed functions",
-              "status": "pass",
-              "detail": "Residential fits \"Wonen\" (assumed)"
-            },
-            {
-              "rule": "Max building height",
-              "status": "pass",
-              "detail": "12.5 m ≤ 15 m (assumed)"
-            },
-            {
-              "rule": "Max gutter height",
-              "status": "unknown",
-              "detail": "Rule unknown; the massing has 12.5 m."
-            },
-            {
-              "rule": "Max coverage (0–1)",
-              "status": "pass",
-              "detail": "0.60 ≤ 0.60 (assumed)"
-            },
-            {
-              "rule": "Max FAR",
-              "status": "unknown",
-              "detail": "Rule unknown; the massing has 2.40."
-            },
-            {
-              "rule": "Parking norm",
-              "status": "unknown",
-              "detail": "Rule unknown; parking is not modelled."
-            },
-            {
-              "rule": "Inside buildable envelope",
-              "status": "pass",
-              "detail": "Inside the setbacks envelope (assumed)"
-            }
-          ]
-        },
-        {
-          "id": "C",
-          "name": "Low Garden Bar",
-          "intent": "A simple low bar with a flat roof that stays modest toward the rear neighbours and frees up as much garden as possible. The plainest and cheapest form to build, with decent daylight from a shallow depth.",
-          "tradeOffs": [
-            "Fewest homes of the three",
-            "Street alignment gives less ideal sun orientation",
-            "Low height leaves allowed volume unused"
-          ],
-          "params": {
-            "typology": "slab",
-            "floors": 2,
-            "groundFloorHeight": 3.2,
-            "floorHeight": 2.9,
-            "depth": 7,
-            "alignment": "street",
-            "coverageTarget": 0.35,
-            "roof": "flat",
-            "colour": "#d98a1f"
-          },
-          "clamps": [],
-          "metrics": {
-            "footprint": 38.73150138779359,
-            "gfa": 77.46300277558719,
-            "far": 0.6978648898701548,
-            "coverage": 0.3489324449350774,
-            "height": 6.1,
-            "floors": 2,
-            "estUnits": 1,
-            "facadeSunScore": 0.5307242394824108
-          },
-          "compliance": [
-            {
-              "rule": "Allowed functions",
-              "status": "pass",
-              "detail": "Residential fits \"Wonen\" (assumed)"
-            },
-            {
-              "rule": "Max building height",
-              "status": "pass",
-              "detail": "6.1 m ≤ 15 m (assumed)"
-            },
-            {
-              "rule": "Max gutter height",
-              "status": "unknown",
-              "detail": "Rule unknown; the massing has 6.1 m."
-            },
-            {
-              "rule": "Max coverage (0–1)",
-              "status": "pass",
-              "detail": "0.35 ≤ 0.60 (assumed)"
-            },
-            {
-              "rule": "Max FAR",
-              "status": "unknown",
-              "detail": "Rule unknown; the massing has 0.70."
-            },
-            {
-              "rule": "Parking norm",
-              "status": "unknown",
-              "detail": "Rule unknown; parking is not modelled."
-            },
-            {
-              "rule": "Inside buildable envelope",
-              "status": "pass",
-              "detail": "Inside the setbacks envelope (assumed)"
-            }
-          ]
+            "roof": "pitched"
+          }
         }
-      ],
+      },
+      "model": "claude-sonnet-5-5",
+      "costUsd": 0.297842
+    }
+  ],
+  "result": {
+    "ok": true,
+    "data": {
+      "option": {
+        "id": "custom",
+        "name": "Sunlit Slab",
+        "intent": "A slim east-west bar turned to face north and south, so every home gets long daylit facades. Kept at a moderate height with a pitched roof to sit gently beside the neighbours, leaving garden space around it.",
+        "tradeOffs": [
+          "Fewer homes than the programme asks",
+          "Narrow plan limits layout variety",
+          "Pitched roof adds height"
+        ],
+        "params": {
+          "typology": "slab",
+          "floors": 3,
+          "groundFloorHeight": 3.5,
+          "floorHeight": 3,
+          "depth": 9,
+          "alignment": "sun",
+          "coverageTarget": 0.5,
+          "roof": "pitched",
+          "colour": "#7a4fb0"
+        },
+        "clamps": [],
+        "metrics": {
+          "footprint": 55.262500332576664,
+          "gfa": 165.78750099772998,
+          "far": 1.4935810900696393,
+          "coverage": 0.49786036335654654,
+          "height": 13.27594834029776,
+          "floors": 3,
+          "estUnits": 2,
+          "facadeSunScore": 0.5241145361434567
+        },
+        "compliance": [
+          {
+            "rule": "Allowed functions",
+            "status": "pass",
+            "detail": "Residential fits \"Wonen\" (assumed)"
+          },
+          {
+            "rule": "Max building height",
+            "status": "pass",
+            "detail": "13.3 m ≤ 15 m (assumed)"
+          },
+          {
+            "rule": "Max gutter height",
+            "status": "unknown",
+            "detail": "Rule unknown; the massing has 9.5 m."
+          },
+          {
+            "rule": "Max coverage (0–1)",
+            "status": "pass",
+            "detail": "0.50 ≤ 0.60 (assumed)"
+          },
+          {
+            "rule": "Max FAR",
+            "status": "unknown",
+            "detail": "Rule unknown; the massing has 1.49."
+          },
+          {
+            "rule": "Parking norm",
+            "status": "unknown",
+            "detail": "Rule unknown; parking is not modelled."
+          },
+          {
+            "rule": "Inside buildable envelope",
+            "status": "pass",
+            "detail": "Inside the setbacks envelope (assumed)"
+          }
+        ]
+      },
       "warnings": []
     },
     "meta": {
       "model": "claude-sonnet-5-5",
-      "promptVersion": "strategyGenerator.v1",
+      "promptVersion": "strategyGenerator.v2",
       "attempts": 1,
       "costUsd": 0.297842,
       "cached": false

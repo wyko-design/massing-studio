@@ -129,12 +129,16 @@ export type InterpretBriefResult = z.infer<typeof InterpretBriefResultSchema>;
 
 // ---- Strategy generator ----
 
-export const OPTION_IDS = ["A", "B", "C"] as const;
+/** The fixed strategies, one tab each; code sets their params from the site (`presetParams`). */
+export const PRESET_IDS = ["homes", "daylight", "garden", "low"] as const;
+export type PresetId = (typeof PRESET_IDS)[number];
+/** Every option tab: the presets, then the one the AI proposes from the brief. */
+export const OPTION_IDS = [...PRESET_IDS, "custom"] as const;
 export const OptionIdSchema = z.enum(OPTION_IDS);
 export type OptionId = z.infer<typeof OptionIdSchema>;
 
 /** Proposal colour per option tab; assigned by code, not by the model. */
-export const OPTION_COLOURS: Record<OptionId, string> = { A: "#c23350", B: "#2f6fb0", C: "#d98a1f" };
+export const OPTION_COLOURS: Record<OptionId, string> = { homes: "#c23350", daylight: "#2f6fb0", garden: "#3f8f4f", low: "#d98a1f", custom: "#7a4fb0" };
 
 export const GenerateDirectionsRequestSchema = z.object({
   /** Constraints in the local frame, with the user's overrides applied. */
@@ -171,8 +175,9 @@ export const DirectionSchema = z.object({
 export type Direction = z.infer<typeof DirectionSchema>;
 
 export const GenerateDirectionsResultSchema = z.object({
-  options: z.array(DirectionSchema).length(3),
-  /** E.g. two options that end up almost the same once the site has clamped them. */
+  /** The custom option: one direction from the brief and the priorities (id "custom"). */
+  option: DirectionSchema,
+  /** E.g. the option does not fit the envelope at all. */
   warnings: z.array(z.string()),
 });
 export type GenerateDirectionsResult = z.infer<typeof GenerateDirectionsResultSchema>;
@@ -187,7 +192,7 @@ export const WriteReportRequestSchema = z.object({
   parcelId: z.string(),
   parcelAreaM2: z.number().positive(),
   constraints: SiteConstraintsSchema,
-  options: z.array(DirectionSchema.pick({ id: true, name: true, intent: true, tradeOffs: true, params: true, clamps: true, metrics: true })).min(1).max(3),
+  options: z.array(DirectionSchema.pick({ id: true, name: true, intent: true, tradeOffs: true, params: true, clamps: true, metrics: true })).min(1).max(OPTION_IDS.length),
 });
 export type WriteReportRequest = z.infer<typeof WriteReportRequestSchema>;
 

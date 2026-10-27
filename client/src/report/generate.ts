@@ -1,7 +1,6 @@
-import { OPTION_IDS, type OptionId, computeMassing, useMassingStore } from "../state/massingStore";
+import { OPTION_IDS, type OptionId, computeMassing, optionParams, optionText, useMassingStore } from "../state/massingStore";
 import { useSiteStore } from "../state/siteStore";
 import { usePresentStore } from "../state/presentStore";
-import { useAiStore } from "../state/aiStore";
 import * as api from "../api/ai";
 import { resolveEnvelope, isPlaceholder } from "@massing/shared";
 import { buildReportModel, type ReportInput } from "./model";
@@ -22,53 +21,57 @@ export async function generateReport(opts: { narrative: boolean }, progress: Rep
   const constraints = useSiteStore.getState().effectiveConstraints();
   if (!scene || !constraints) throw new Error("Load a site first.");
   const envelope = resolveEnvelope(scene.parcel.ring, constraints);
-  const { programme } = useMassingStore.getState();
-  const directions = useAiStore.getState().directions.result?.options ?? [];
+  const { programme, custom } = useMassingStore.getState();
 
-  const results = OPTION_IDS.map((id) => ({ id, result: computeMassing(id), params: useMassingStore.getState().options[id] }));
-  if (results.some((r) => !r.result)) throw new Error("Could not compute the options.");
-  const options: ReportInput["options"] = results.map((r) => {
-    const d = directions.find((x) => x.id === r.id);
-    return { id: r.id, params: r.params, result: r.result!, ...(d ? { name: d.name, intent: d.intent, tradeOffs: d.tradeOffs } : {}) };
-  });
+  // the four presets, and the custom option when there is one
+  const options: ReportInput["options"] = [];
+  for (const id of OPTION_IDS) {
+    const params = optionParams(id);
+    if (!params) continue;
+    const result = computeMassing(id);
+    if (!result) throw new Error("Could not compute the options.");
+    const text = optionText(id, custom);
+    options.push({ id, params, result, name: text.name, ...(text.intent ? { intent: text.intent } : {}), tradeOffs: text.tradeOffs });
+  }
 
   // renders: every option from the same view, the one on screen
   const present = usePresentStore.getState();
   const render = async (id: OptionId, multiplier: 1 | 2) => new Uint8Array(await (await present.renderForReport(id, multiplier)).arrayBuffer());
   const optionImages: Uint8Array[] = [];
   for (const o of options) {
-    progress(`Rendering option ${o.id}…`);
+    progress(`Rendering ${o.name}…`);
     optionImages.push(await render(o.id as OptionId, 1));
   }
   progress("Rendering the cover…");
-  const cover = await render(useMassingStore.getState().active, 2);
+  const active = useMassingStore.getState().active;
+  const cover = await render(options.some((o) => o.id === active) ? active : "homes", 2);
 
   let narrative: ReportInput["narrative"] = null;
   let narrativeState: ReportResult["narrative"] = "skipped";
   let narrativeError: string | undefined;
   if (opts.narrative) {
-    if (directions.length === 0) {
-      narrativeError = "Generate directions first: the narrative needs the option names and intents.";
+    progress("Writing the narrative…");
+    try {
+      const { data, cached } = await api.writeReport({
+        address: scene.meta?.address ?? scene.parcel.id,
+        parcelId: scene.parcel.id,
+        parcelAreaM2: scene.parcel.areaM2,
+        constraints,
+        options: options.map((o) => ({
+          id: o.id as OptionId,
+          name: o.name!,
+          intent: o.intent ?? "",
+          tradeOffs: o.tradeOffs ?? [],
+          params: o.params,
+          clamps: o.result.clamps,
+          metrics: o.result.metrics,
+        })),
+      });
+      narrative = data;
+      narrativeState = cached ? "cached" : "written";
+    } catch (e) {
+      narrativeError = api.describeError(e);
       narrativeState = "failed";
-    } else {
-      progress("Writing the narrative…");
-      try {
-        const { data, cached } = await api.writeReport({
-          address: scene.meta?.address ?? scene.parcel.id,
-          parcelId: scene.parcel.id,
-          parcelAreaM2: scene.parcel.areaM2,
-          constraints,
-          options: directions.map((d) => {
-            const live = options.find((o) => o.id === d.id)!;
-            return { id: d.id, name: d.name, intent: d.intent, tradeOffs: d.tradeOffs, params: live.params, clamps: live.result.clamps, metrics: live.result.metrics };
-          }),
-        });
-        narrative = data;
-        narrativeState = cached ? "cached" : "written";
-      } catch (e) {
-        narrativeError = api.describeError(e);
-        narrativeState = "failed";
-      }
     }
   }
 

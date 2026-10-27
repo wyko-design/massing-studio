@@ -81,7 +81,7 @@ export type LabelInput = {
   showEnvelope: boolean;
   result: MassingResult | null;
   optionId: string;
-  /** Direction name from the strategy generator (words only), if any. */
+  /** The option's name: the preset's, or the strategy generator's words for the custom one. */
   optionName?: string;
   streetSide: number | null;
   annotations: boolean;
@@ -116,7 +116,7 @@ export function buildOverlay(input: LabelInput): Overlay {
         pick: "top",
         tag: true,
         lines: [
-          `Option ${input.optionId}${input.optionName ? ` · ${input.optionName}` : ""}`,
+          input.optionName ?? `Option ${input.optionId}`,
           `${m.floors} ${m.floors === 1 ? "floor" : "floors"} · ${fmtM(m.height)} · GFA ${fmtM2(m.gfa)}`,
         ],
       });

@@ -101,55 +101,34 @@ describe("briefInterpreter", () => {
 });
 
 describe("strategyGenerator", () => {
+  // the v1 recording's first option, replayed as the v2 one-option answer
   const rec = recording<GenerateDirectionsRequest>("strategyGenerator");
   const wire = rec.steps[0]!.output as StrategyWire;
 
-  it("replays the recorded answer into three realised options", async () => {
+  it("replays the recorded answer into one realised custom option", async () => {
     const r = await generateDirections(new FakeLlmClient(rec.steps), rec.input);
     expect(r).toEqual(rec.result);
     if (!r.ok) throw new Error("expected ok");
-    expect(r.data.options.map((o) => o.id)).toEqual(["A", "B", "C"]);
-    expect(r.data.options.map((o) => o.params.colour)).toEqual(["#c23350", "#2f6fb0", "#d98a1f"]);
-    for (const o of r.data.options) expect(o.metrics.footprint).toBeGreaterThan(0);
+    expect(r.data.option.id).toBe("custom");
+    expect(r.data.option.params.colour).toBe("#7a4fb0");
+    expect(r.data.option.metrics.footprint).toBeGreaterThan(0);
   });
 
   it("clamps out-of-range params and records generator clamps", () => {
     const w = clone(wire);
-    w.options[0]!.params = { ...w.options[0]!.params, depth: 45, floors: 9 };
-    const r = finishStrategy(w, rec.input, 1);
+    w.option.params = { ...w.option.params, depth: 45, floors: 9 };
+    const r = finishStrategy(w, rec.input);
     if (!("data" in r)) throw new Error(r.errors.join("\n"));
-    const a = r.data.options[0]!;
+    const a = r.data.option;
     expect(a.params.depth).toBe(40);
     expect(a.clamps[0]).toBe("AI asked for depth 45 m; the input range allows 40 m.");
     expect(a.clamps.some((c) => /^Asked for 9 floors; max height/.test(c))).toBe(true);
   });
 
-  it("rejects three near-identical options and digits in the text", () => {
+  it("rejects digits in the text", () => {
     const w = clone(wire);
-    const same = { ...w.options[0]!.params };
-    w.options.forEach((o, i) => (o.params = { ...same, floors: same.floors + (i === 2 ? 1 : 0) }));
-    w.options[1]!.intent = "Twelve homes, or 12 to be exact.";
-    const errors = errorsOf(finishStrategy(w, rec.input, 1));
-    expect(errors[0]).toContain("options.1.intent contains a number");
-    expect(errors.filter((e) => e.includes("near-identical"))).toHaveLength(3);
-  });
-
-  it("asks again when options realise the same, and warns on the second attempt", () => {
-    // A courtyard never fits the stand-in envelope and falls back to the same slab as option A.
-    const w = clone(wire);
-    w.options[0]!.params = { ...w.options[0]!.params, typology: "slab", alignment: "street", depth: 7, floors: 4, coverageTarget: 0.6, roof: "flat" };
-    w.options[1]!.params = { ...w.options[0]!.params, typology: "courtyard" };
-    const first = finishStrategy(w, rec.input, 1);
-    expect(errorsOf(first).some((e) => e.startsWith("Options A and B realise almost the same massing"))).toBe(true);
-    const second = finishStrategy(w, rec.input, 2);
-    if (!("data" in second)) throw new Error(second.errors.join("\n"));
-    expect(second.data.warnings[0]).toMatch(/^Options A and B realise almost the same massing/);
-  });
-
-  it("needs exactly three options", () => {
-    const w = clone(wire);
-    w.options.pop();
-    expect(errorsOf(finishStrategy(w, rec.input, 1))).toEqual(["Return exactly three options, not 2."]);
+    w.option.intent = "Twelve homes, or 12 to be exact.";
+    expect(errorsOf(finishStrategy(w, rec.input))[0]).toContain("option.intent contains a number");
   });
 });
 

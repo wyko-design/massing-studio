@@ -13,9 +13,8 @@ import { fetchPlotContext } from "./geoApi";
 import { fetchScene } from "../api/scene";
 import type { PlotData } from "./globe/plotLayer";
 import { useConstraints, useEnvelope, usePlaceholder, useSiteStore } from "../state/siteStore";
-import { computeMassing, useMassing, useMassingStore } from "../state/massingStore";
+import { computeMassing, useMassing, useMassingStore, useOptionText } from "../state/massingStore";
 import { usePresentStore } from "../state/presentStore";
-import { useAiStore } from "../state/aiStore";
 import { buildOverlay } from "../present/labels";
 import { useLandingStore } from "./landingStore";
 import { TOKEN_VARS } from "./tokens";
@@ -80,11 +79,10 @@ function useStudioScene(presenting: boolean) {
   const active = useMassingStore((s) => s.active);
   const massing = useMassing(active);
   const present = usePresentStore();
-  const names = useAiStore((s) => s.directions.result?.options);
   const option = present.job?.option ?? active;
   const jobMassing = useMemo(() => (present.job ? computeMassing(present.job.option) : null), [present.job]);
   const shown = present.job ? jobMassing : massing;
-  const name = names?.find((o) => o.id === option)?.name;
+  const name = useOptionText(option).name;
   const overlay = useMemo(
     () =>
       scene && (presenting || present.job)

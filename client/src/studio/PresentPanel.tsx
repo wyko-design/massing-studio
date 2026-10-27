@@ -10,14 +10,13 @@ import type { Grid } from "../landing/grid";
 import type { TextPart } from "../landing/ShuffleText";
 import { usePresentStore } from "../state/presentStore";
 import { useConstraints, useEnvelope, useSiteStore } from "../state/siteStore";
-import { OPTION_IDS, useMassingStore, type OptionId } from "../state/massingStore";
-import { useAiStore } from "../state/aiStore";
+import { OPTION_IDS, optionText, useMassingStore, useOptionText, type OptionId } from "../state/massingStore";
 import { HOME_VIEW, VIEW_PRESETS, siteView, type ViewPreset } from "../landing/model/siteView";
 import { MULTIPLIERS, exportSide, type Multiplier } from "../present/frame";
 import { LOOKS, type LookId } from "../viewer/renderStyle";
 import { generateReport, type ReportResult } from "../report/generate";
 import { PanelFrame, type Tab } from "./PanelFrame";
-import { ActionRow, Note, Section, SegmentRow, Segments, ToggleRow, ValueRow } from "./rows";
+import { ActionRow, Note, PickRow, Section, SegmentRow, Segments, ToggleRow, ValueRow } from "./rows";
 import type { PanelCells } from "./layout";
 
 const fileSafe = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -102,14 +101,15 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
   const scene = useSiteStore((s) => s.scene);
   const active = useMassingStore((s) => s.active);
   const setActive = useMassingStore((s) => s.setActive);
-  const hasDirections = useAiStore((s) => s.directions.status === "done");
+  const custom = useMassingStore((s) => s.custom);
+  const name = useOptionText(active).name;
   const [writeNarrative, setWriteNarrative] = useState(true);
   const [report, setReport] = useState<Report>({ status: "idle" });
   const ex = p.exportState;
   const side = exportSide(p.multiplier);
   const makeReport = () => {
     setReport({ status: "working", message: "Starting" });
-    generateReport({ narrative: writeNarrative && hasDirections }, (message) => setReport({ status: "working", message: message.replace(/…$/, "") })).then(
+    generateReport({ narrative: writeNarrative }, (message) => setReport({ status: "working", message: message.replace(/…$/, "") })).then(
       (result) => setReport({ status: "done", result }),
       (e) => setReport({ status: "error", message: e instanceof Error ? e.message : String(e) }),
     );
@@ -128,7 +128,7 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
   else if (ex.status === "error") status = [{ text: "Export failed: ", className: "accent" }, { text: ex.message }];
   else if (report.status === "done") status = [{ text: "Report saved", className: "accent" }, { text: `, ${report.result.fileName}` }];
   else if (ex.status === "done") status = [{ text: "Image saved", className: "accent" }, { text: `, ${ex.width} × ${ex.height} px` }];
-  else status = [{ text: `Option ${active}`, className: "accent" }, { text: `, ${side} × ${side} px` }];
+  else status = [{ text: name, className: "accent" }, { text: `, ${side} × ${side} px` }];
 
   const working = report.status === "working" || ex.status === "rendering";
   return (
@@ -137,14 +137,20 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
       panel={cells.panel}
       band={cells.band}
       heading={["Image", "and report"]}
-      details={{ chip: `Option ${active}`, lines: [`${side} × ${side} px`, "Square PNG"] }}
+      details={{ chip: name, lines: [`${side} × ${side} px`, "Square PNG"] }}
       status={status}
       busy={busy}
       secondary={{ label: "PDF report", icon: suggestIcon, disabled: working || !scene, onClick: makeReport, title: "Renders every option and writes the report" }}
       go={{ label: "Export PNG", disabled: working || !scene, onClick: () => p.startExport(fileName) }}
     >
       <Section label="Option" hint="the one on screen" />
-      <SegmentRow<OptionId> icon={subIcon} label="Option" value={active} onChange={setActive} options={OPTION_IDS.map((o) => ({ value: o, text: `Option ${o}` }))} hideTitle />
+      <PickRow<OptionId>
+        icon={subIcon}
+        label="Option"
+        value={active}
+        onChange={setActive}
+        options={OPTION_IDS.map((o) => ({ value: o, text: optionText(o, custom).name, disabled: o === "custom" && !custom }))}
+      />
       <Section label="Image" hint="the square, as on screen" />
       <SegmentRow<Multiplier> icon={coverageIcon} label="Resolution" value={p.multiplier} onChange={p.setMultiplier} options={MULTIPLIERS.map((m) => ({ value: m, text: `${m}×` }))} />
       <ValueRow icon={areaIcon} label="Size" value={`${side} × ${side}`} note={<span className="muted">px</span>} />
@@ -159,7 +165,7 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
       )}
       {ex.status === "error" && <Note accent>{ex.message}</Note>}
       <Section label="Report" hint="PDF, every option" />
-      <ToggleRow icon={suggestIcon} label="AI narrative" on={writeNarrative && hasDirections} disabled={!hasDirections} onChange={setWriteNarrative} note={hasDirections ? "numbers by code" : "generate first"} />
+      <ToggleRow icon={suggestIcon} label="AI narrative" on={writeNarrative} onChange={setWriteNarrative} note="numbers by code" />
       {report.status === "done" && (
         <Note small>
           Saved {report.result.fileName}, {(report.result.bytes / 1e6).toFixed(1)} MB.{" "}
