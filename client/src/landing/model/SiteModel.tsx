@@ -21,6 +21,7 @@ import { registerSiteView, type SiteView } from "./siteView";
 import { ProposalLight, ProposalVolume } from "../../viewer/ProposalVolume";
 import { defaultRenderStyle, type RenderStyle } from "../../viewer/renderStyle";
 import { drawOverlay, overlayFonts, type Project } from "../../present/drawOverlay";
+import { sceneToSvg } from "../../present/svgExport";
 import type { Overlay } from "../../present/labels";
 import type { P3 } from "../../present/camera";
 
@@ -635,6 +636,14 @@ function ViewApi({ orbit, limits, affine, overlay, labels }: { orbit: { current:
         paintWash(ctx, size, S.washPx * k);
         if (ov && af) drawOverlay(ctx, ov, sceneProject(camera(), css.width, css.height, af), { width: css.width, height: css.height }, k, ls);
         return new Promise<Blob>((resolve, reject) => out.toBlob((b) => (b ? resolve(b) : reject(new Error("Image encoding failed (image too large?)."))), mime, 0.9));
+      },
+      captureSvg: async () => {
+        const { gl, scene, size: css, invalidate } = get();
+        try {
+          return new Blob([sceneToSvg(gl, scene, camera(), css.width, css.height)], { type: "image/svg+xml" });
+        } finally {
+          invalidate();
+        }
       },
     });
     return () => registerSiteView(null);

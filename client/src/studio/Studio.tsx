@@ -7,7 +7,7 @@ import { usePresentStore } from "../state/presentStore";
 import { exportSide } from "../present/frame";
 import { SCREEN_HASH, type StudioScreen } from "../routes";
 import { DirectionsControls, OptionInfo } from "./DirectionsPanel";
-import { PresentControls, PresentOutput } from "./PresentPanel";
+import { PresentOutput } from "./PresentPanel";
 import type { StudioLayout } from "./layout";
 
 /** Back to the landing's first step: a fresh page (the globe cannot resume mid-flow). */
@@ -58,8 +58,8 @@ function ExportRunner() {
 }
 
 /**
- * The studio's panels around the site model's square: Directions (controls left, the chosen option right), Present
- * (camera and look left, the export right) and the rules (the landing's rules window, right of the square).
+ * The studio's panels around the site model's square: Directions (controls left, the chosen option right), Export
+ * (one panel at the right; browser back returns to Directions) and the rules (the landing's rules window, right of the square).
  */
 export function StudioPanels({ grid, layout, screen }: { grid: Grid; layout: StudioLayout; screen: StudioScreen }) {
   const go = (s: StudioScreen) => {
@@ -77,10 +77,7 @@ export function StudioPanels({ grid, layout, screen }: { grid: Grid; layout: Stu
             <OptionInfo grid={grid} cells={layout.right} onPresent={() => go("present")} />
           </>
         ) : (
-          <>
-            <PresentControls grid={grid} cells={layout.left} onBack={() => go("directions")} />
-            <PresentOutput grid={grid} cells={layout.right} />
-          </>
+          <PresentOutput grid={grid} cells={layout.right} />
         )}
       </div>
       <ExportRunner />

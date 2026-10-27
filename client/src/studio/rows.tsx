@@ -157,12 +157,14 @@ export function ToggleRow({ icon, label, on, onChange, note, disabled }: { icon?
 }
 
 /** Title · read-only value (blue; grey when unknown) · note. */
-export function ValueRow({ icon, label, value, note, unknown, sub, turned }: { icon?: string; label: string; value: ReactNode; note?: ReactNode; unknown?: boolean; sub?: boolean; turned?: boolean }) {
+export function ValueRow({ icon, label, value, note, unknown, sub, turned, wide }: { icon?: string; label: string; value: ReactNode; note?: ReactNode; unknown?: boolean; sub?: boolean; turned?: boolean; /** The value cell fills the rest of the row (no note). */ wide?: boolean }) {
   return (
-    <li className={`row${sub ? " sub" : ""}`}>
+    <li className={`row${sub ? " sub" : ""}${wide ? " wide" : ""}`}>
       <Title icon={icon} label={label} turned={turned} />
-      <div className={`cell-value static t-semimono${unknown ? " unknown" : ""}`}>{value}</div>
-      <div className="cell-note t-semimono">{note}</div>
+      <div className={`cell-value static t-semimono${unknown ? " unknown" : ""}`} style={wide ? { borderRight: 0 } : undefined}>
+        {value}
+      </div>
+      {!wide && <div className="cell-note t-semimono">{note}</div>}
     </li>
   );
 }
@@ -235,7 +237,7 @@ export function Note({ children, small, white, accent, muted, rows2 }: { childre
 }
 
 /** Title · one of a list, opened under the cell in the rules window's menu (single choice). */
-export function PickRow<T extends string>({ icon, label, value, options, onChange }: { icon?: string; label: string; value: T; options: Choice<T>[]; onChange: (v: T) => void }) {
+export function PickRow<T extends string>({ icon, label, value, options, onChange, hideTitle }: { icon?: string; label: string; value: T; options: Choice<T>[]; onChange: (v: T) => void; /** The menu across the whole row. */ hideTitle?: boolean }) {
   const button = useRef<HTMLButtonElement>(null);
   const [box, setBox] = useState<{ left: number; top: number; width: number } | null>(null);
   const close = () => setBox(null);
@@ -265,9 +267,9 @@ export function PickRow<T extends string>({ icon, label, value, options, onChang
   const current = options.find((o) => o.value === value);
   const page = button.current?.closest(".landing");
   return (
-    <li className="row wide">
-      <Title icon={icon} label={label} />
-      <div className="cell-value" style={{ borderRight: 0 }}>
+    <li className={`row ${hideTitle ? "full" : "wide"}`}>
+      {!hideTitle && <Title icon={icon} label={label} />}
+      <div className="cell-value" style={hideTitle ? { borderLeft: 0, borderRight: 0 } : { borderRight: 0 }}>
         <button ref={button} type="button" className="pick t-semimono" aria-haspopup="listbox" aria-expanded={!!box} aria-label={label} onClick={toggle}>
           <span>{current?.text ?? value}</span>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden style={{ transform: box ? "rotate(180deg)" : undefined }}>

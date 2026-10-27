@@ -26,7 +26,7 @@ type Props<T extends string> = {
   heading: [string, string];
   onBack?: () => void;
   /** What the header says beside the heading: the site (plot chip, address) unless given; without lines only the chip, centred. */
-  details?: { chip: string; chipIcon?: string; lines?: [string, string] };
+  details?: { chip: string; chipIcon?: string; lines?: [string, string] } | false;
   tabs?: Tab<T>[];
   tab?: T;
   onTab?: (tab: T) => void;
@@ -68,9 +68,9 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
     const id = setTimeout(() => setRevealed(true), SHIMMER_MS);
     return () => clearTimeout(id);
   }, [revealed]);
-  const chip = details?.chip ?? site.chip;
+  const chip = details ? details.chip : site.chip;
   const chipOnly = !!details && !details.lines;
-  const [street, place] = details?.lines ?? [site.street, site.place];
+  const [street, place] = (details && details.lines) || [site.street, site.place];
   const win = boxStyle(grid, panel);
   const rel = (b: BoxStyle): BoxStyle => ({ left: b.left - win.left, top: b.top - win.top, width: b.width, height: b.height });
   const hasBand = !!(status || secondary || go);
@@ -92,27 +92,29 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
             <br />
             {heading[1]}
           </h2>
-          <div className="rules-details">
-            <span className="rules-chip t-semimono">
-              {chip}
-              {details?.chipIcon && <img src={details.chipIcon} alt="" width={12} height={12} />}
-            </span>
-            {!chipOnly && (
-              <div className="rules-where">
-                <button type="button" className="rules-back" aria-label="Back" disabled={!onBack} onClick={onBack} style={onBack ? undefined : { visibility: "hidden" }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
-                    <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
-                    <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                <span className="rules-address t-semimono">
-                  {street}
-                  <br />
-                  {place}
-                </span>
-              </div>
-            )}
-          </div>
+          {details !== false && (
+            <div className="rules-details">
+              <span className="rules-chip t-semimono">
+                {chip}
+                {details && details.chipIcon && <img src={details.chipIcon} alt="" width={12} height={12} />}
+              </span>
+              {!chipOnly && (
+                <div className="rules-where">
+                  <button type="button" className="rules-back" aria-label="Back" disabled={!onBack} onClick={onBack} style={onBack ? undefined : { visibility: "hidden" }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
+                      <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+                      <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <span className="rules-address t-semimono">
+                    {street}
+                    <br />
+                    {place}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </header>
         {tabs && (
           <ul className="panel-tabs t-semimono" role="tablist">

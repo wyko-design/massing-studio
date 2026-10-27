@@ -40,7 +40,8 @@ type PresentState = {
   setToggle: (key: "streetLabels" | "annotations", on: boolean) => void;
   saveView: (parcelId: string) => void;
   restoreView: (parcelId: string) => void;
-  startExport: (fileName: string) => void;
+  /** Download the square as a PNG; resolves with how it went. */
+  startExport: (fileName: string) => Promise<ExportState>;
   /** Render one option from the view on screen for the PDF report; resolves with the JPEG. One at a time. */
   renderForReport: (option: OptionId, multiplier: Multiplier) => Promise<Blob>;
   finishExport: (result: ExportState) => void;
@@ -48,12 +49,14 @@ type PresentState = {
 
 let jobId = 0;
 const reportWaiters = new Map<number, { resolve: (b: Blob) => void; reject: (e: Error) => void }>();
+const downloadWaiters = new Map<number, (result: ExportState) => void>();
 
 export const usePresentStore = create<PresentState>()((set, get) => ({
   style: { ...defaultRenderStyle, look: savedLook() },
   multiplier: 2,
-  streetLabels: true,
-  annotations: true,
+  // no text over the model (user's choice): exports carry only the placeholder watermark
+  streetLabels: false,
+  annotations: false,
   savedViews: loadSavedViews(),
   job: null,
   exportState: { status: "idle" },
@@ -80,10 +83,18 @@ export const usePresentStore = create<PresentState>()((set, get) => ({
     if (view) siteView()?.set(view);
   },
   startExport: (fileName) => {
-    if (!siteView()) return set({ exportState: { status: "error", message: "The model is not ready yet." } });
+    if (!siteView()) {
+      const failed: ExportState = { status: "error", message: "The model is not ready yet." };
+      set({ exportState: failed });
+      return Promise.resolve(failed);
+    }
     const prev = get().exportState;
     if (prev.status === "done") URL.revokeObjectURL(prev.url);
-    set({ job: { id: ++jobId, multiplier: get().multiplier, fileName, option: useMassingStore.getState().active, deliver: "download" }, exportState: { status: "rendering" } });
+    const id = ++jobId;
+    return new Promise<ExportState>((resolve) => {
+      downloadWaiters.set(id, resolve);
+      set({ job: { id, multiplier: get().multiplier, fileName, option: useMassingStore.getState().active, deliver: "download" }, exportState: { status: "rendering" } });
+    });
   },
   renderForReport: (option, multiplier) =>
     new Promise<Blob>((resolve, reject) => {
@@ -104,5 +115,9 @@ export const usePresentStore = create<PresentState>()((set, get) => ({
       return;
     }
     set({ job: null, exportState });
+    if (job) {
+      downloadWaiters.get(job.id)?.(exportState);
+      downloadWaiters.delete(job.id);
+    }
   },
 }));

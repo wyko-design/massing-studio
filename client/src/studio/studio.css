@@ -17,9 +17,10 @@
   scrollbar-color: var(--stroke) transparent;
 }
 
-/* the last row closes with a line, so a short body ends cleanly above the empty space */
+/* the last row closes with a line on the next grid line (drawn below the row, not inside it), so a short body ends
+   cleanly above the empty space and a full one shares the band's top line instead of doubling it */
 .landing.studio .panel-body > li:last-child {
-  border-bottom: 1px solid var(--stroke);
+  box-shadow: 0 1px 0 var(--stroke);
 }
 
 .landing.studio .panel-tabs {
@@ -111,6 +112,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* the tag's white tick, black on the grey chip */
+.landing.studio .rules-chip img {
+  filter: brightness(0);
 }
 
 /* the panel's band: a second button may sit between the outlined one and the arrow */

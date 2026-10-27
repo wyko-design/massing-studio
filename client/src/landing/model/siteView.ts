@@ -16,6 +16,8 @@ export type SiteViewHandle = {
   set: (view: SiteView) => void;
   /** The square drawn at `size` × `size` px from the view on screen, with the wash and the label layer, encoded. */
   capture: (request: CaptureRequest) => Promise<Blob>;
+  /** The view on screen as a vector drawing (SVG): faces and edges, no wash or labels. */
+  captureSvg: () => Promise<Blob>;
 };
 
 let current: SiteViewHandle | null = null;

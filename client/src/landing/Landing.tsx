@@ -67,9 +67,9 @@ function useHash(): string {
 
 /**
  * What the studio adds to the site model: the shown option's mass (or the one an export asks for), the envelope switch,
- * the look, and the label layer (Present and exports).
+ * the look, and the label layer (exports only: no text over the model on screen).
  */
-function useStudioScene(presenting: boolean) {
+function useStudioScene() {
   const scene = useSiteStore((s) => s.scene);
   const showEnvelope = useSiteStore((s) => s.showEnvelope);
   const envelope = useEnvelope();
@@ -84,7 +84,7 @@ function useStudioScene(presenting: boolean) {
   const name = useOptionText(option).name;
   const overlay = useMemo(
     () =>
-      scene && (presenting || present.job)
+      scene && present.job
         ? buildOverlay({
             scene,
             envelope,
@@ -98,7 +98,7 @@ function useStudioScene(presenting: boolean) {
             placeholder,
           })
         : null,
-    [scene, presenting, present.job, envelope, showEnvelope, shown, option, name, constraints, present.annotations, present.streetLabels, placeholder],
+    [scene, present.job, envelope, showEnvelope, shown, option, name, constraints, present.annotations, present.streetLabels, placeholder],
   );
   return { proposal: shown?.volumes ?? null, showEnvelope, overlay, look: present.style.look, labels: present.style.labels };
 }
@@ -218,7 +218,7 @@ export function Landing() {
   const rulesT = useSlide(studio && screen === "rules" ? 1 : 0, 600);
   const squareBox = lerpBox(boxStyle(grid, studioCells.square), boxStyle(grid, studioCells.rulesSquare), rulesT);
   const win = model === "on" ? (modelT < 1 ? lerpBox(from, squareBox, modelT) : squareBox) : from;
-  const studioScene = useStudioScene(studio && screen === "present");
+  const studioScene = useStudioScene();
   // the 3D copy is built hidden once the rules have loaded (building it stalls the page for a moment, better while the
   // user reads than on the arrow click); a click before that builds it at once
   const sceneReady = useSiteStore((s) => !!s.scene && !s.loading);
