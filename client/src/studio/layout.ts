@@ -1,4 +1,4 @@
-import { EDGE_CELLS, LAYOUT, SQUARE, besideRight, modelWindow, type Cells, type Grid } from "../landing/grid";
+import { EDGE_CELLS, LAYOUT, SQUARE, besideRight, logoCells, modelWindow, type Cells, type Grid } from "../landing/grid";
 
 /**
  * The studio screens on the landing's page grid. Directions and Present: the site model's square in the middle (the
@@ -17,7 +17,6 @@ export type PanelCells = { panel: Cells; band: Cells };
 
 export type StudioLayout = {
   logo: Cells;
-  toggle: Cells;
   /** The site model's square (Directions, Present). */
   square: Cells;
   left: PanelCells;
@@ -39,10 +38,8 @@ export function studioLayout(g: Grid): StudioLayout {
   const side = square.c1 - square.c0;
   const p0 = besideRight(g, square.c0, side, STUDIO.rulesCols);
   const rulesPanel = cells(p0 + side + SQUARE.gap, p0 + side + SQUARE.gap + STUDIO.rulesCols, r0, r1);
-  const { logo } = LAYOUT;
   return {
-    logo,
-    toggle: cells(g.N - logo.c0 - LAYOUT.toggleCells, g.N - logo.c0, logo.r0, logo.r0 + LAYOUT.toggleCells),
+    logo: logoCells(g),
     square,
     left: withBand(cells(Math.max(EDGE_CELLS, leftC1 - SQUARE.panelMax), leftC1, r0, r1)),
     right: withBand(cells(rightC0, Math.min(g.N - EDGE_CELLS, rightC0 + SQUARE.panelMax), r0, r1)),

@@ -47,12 +47,12 @@
   border-bottom: 1px solid var(--stroke);
   background: var(--white);
   color: var(--black);
-  /* two lines fit one cell */
+  /* the label's two lines fit one cell, centred both ways */
   font-size: 10px;
   line-height: 11px;
   letter-spacing: -0.1px;
   text-align: center;
-  text-wrap: balance;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -87,6 +87,30 @@
 
 .landing.studio .panel-body.fit {
   overflow: hidden;
+}
+
+/* the reveal, as the rules window's: the window grows, header and band shimmer, then the tabs, the body and the band's
+   buttons fade in slowly (header text and buttons: landing.css .rules-grow) */
+.landing.studio .studio-panel .panel-tabs,
+.landing.studio .studio-panel .panel-body,
+.landing.studio .studio-panel > .rules-go {
+  transition: opacity 800ms ease-out; /* FADE_MS in RulesPanel.tsx */
+}
+
+.landing.studio .studio-panel.growing .panel-tabs,
+.landing.studio .studio-panel.growing .panel-body {
+  opacity: 0;
+}
+
+/* a band holding only the white Reset button draws no line above it */
+.landing.studio .rules-band.bare {
+  border-top-color: transparent;
+}
+
+.landing.studio .rules-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* the panel's band: a second button may sit between the outlined one and the arrow */
@@ -570,6 +594,20 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+}
+
+/* bullets: closer together, centred in the two rows */
+.landing.studio .note.small.rows2 {
+  display: flex;
+  align-items: center;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 14px;
+}
+
+.landing.studio .note.small.rows2 ul {
+  flex: 1;
+  min-width: 0;
 }
 
 .landing.studio .note.rows2 li + li {

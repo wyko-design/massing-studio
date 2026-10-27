@@ -2,7 +2,6 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import "./landing.css";
 import { CountryInput } from "./CountryInput";
 import { GridLines } from "./GridLines";
-import { GridToggle } from "./GridToggle";
 import { Globe } from "./globe/Globe";
 import type { GlobePlacement } from "./globe/GlobeRenderer";
 import { LANDING_MIN_ROWS, boxStyle, landingLayout, lerpBox, lineY, modelWindow } from "./grid";
@@ -277,7 +276,6 @@ export function Landing() {
             <ShuffleText parts={[{ text: "STUDIO" }]} />
           </span>
         </button>
-        <GridToggle box={boxStyle(grid, layout.toggle)} on={overlay} onToggle={() => setOverlay((o) => !o)} />
 
         <div className="box window" style={win} />
         {modelContext && handOver && (prewarm || model !== "off") && (

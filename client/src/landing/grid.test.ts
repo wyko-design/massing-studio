@@ -99,7 +99,7 @@ describe("boxStyle", () => {
         const g = computeGrid(w, h, dpr, LANDING_MIN_ROWS);
         const { xs, ys } = linePixels(g);
         const L = landingLayout(g);
-        const boxes: Cells[] = [L.logo, L.toggle, L.window, L.topBand, L.globe, L.inputBand, L.field, L.button];
+        const boxes: Cells[] = [L.logo, L.window, L.topBand, L.globe, L.inputBand, L.field, L.button];
         for (const b of boxes) {
           const s = boxStyle(g, b);
           const right = s.left + s.width - 1;
@@ -132,14 +132,13 @@ describe("landingLayout", () => {
     const g = computeGrid(1440, 928);
     const L = landingLayout(g);
     expect(g.cell).toBe(32);
-    expect(boxStyle(g, L.logo)).toEqual({ left: 64, top: 64, width: 129, height: 65 });
+    // the logo lines up with the studio's left panel (one cell in, at 1440)
+    expect(boxStyle(g, L.logo)).toEqual({ left: 32, top: 64, width: 129, height: 65 });
     expect(boxStyle(g, L.window)).toEqual({ left: 480, top: 160, width: 481, height: 609 });
     expect(boxStyle(g, L.globe)).toEqual({ left: 544, top: 224, width: 353, height: 353 });
     expect(boxStyle(g, L.field)).toEqual({ left: 608, top: 704, width: 193, height: 33 });
     expect(boxStyle(g, L.button)).toEqual({ left: 800, top: 704, width: 33, height: 33 });
     expect(lineY(g, L.hookRow)).toBe(608);
-    // toggle mirrors the logo: two cells in from the right
-    expect(boxStyle(g, L.toggle)).toEqual({ left: 1344, top: 64, width: 33, height: 33 });
     // field + button centred in the window
     const win = boxStyle(g, L.window);
     const f = boxStyle(g, L.field);

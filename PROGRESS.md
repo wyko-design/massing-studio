@@ -1043,3 +1043,13 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
   - Left panel: Reset is a white button in the arrow's place of the band (`go.white`, reset icon); the Reset row is gone. The band shows on every tab (Reset), or with "Generate option" on Your brief before an option exists. The preset description is an exact two-row white note.
 - **Checked:** 446 tests (+3 roof), typecheck, build; browser 1440×928: body 416 px, content 416 px, no label cut, chip centred.
 - **Open issues:** on smaller pages (square < 19 cells, e.g. 1280×800) the right panel body has fewer than 11 rows and the last rule rows are cut rather than scrolled. Pitched roofs only checked by tests and at small scale on the placeholder plot.
+
+## Option panel one per row again; panel reveal; logo over the left panel (2026-10-27)
+- **Built:**
+  - Right panel: back to one number / rule per row with notes (Coverage "footprint ÷ plot area", FAR "GFA ÷ plot area" added), trade-off bullets as an exact two-row note (14 px lines, centred). Still never scrolls: when the page leaves fewer body rows than the layout needs (2 + 1 + 7 + 1 + rules, 18 for 7 rules: e.g. 1680×1050 has 19), numbers and rules go two to a row (`PairRow`, short rule names) — at 1440×928 (13 rows) that is what shows. Chip in caps with the tag icon: "RULES MET ✓", "N RULES NOT MET ✕".
+  - Studio panels reveal like the rules window: grow 600 ms, header and band shimmer until 2 s, then header text, tabs, body and band buttons fade in over 800 ms (`PanelFrame` `growing` state; reduced motion skips it).
+  - Tab labels always on two lines (first word / rest), centred both ways.
+  - The band holding only Reset has no line above it (`rules-band.bare`).
+  - Grid toggle button removed (`GridToggle.tsx` deleted, `toggle` cells gone from both layouts; the keyboard shortcut for the grid overlay stays). Logo moved on every screen so its left edge is the studio's left panel's (`logoCells` in `landing/grid.ts`; at 1440×928 one cell in, x 32).
+- **Checked:** 446 tests (grid test: logo at x 32), typecheck, build; browser 1440×928 (pairs, no scroll) and 1680×1050 (one per row, content 576 of 608 px, logo and left panel both at x 40, no line above Reset).
+- **Open issues:** the reveal replays each time the panels mount (Directions ↔ Present). On the landing screens the logo now sits one cell further left than in the Figma reference.

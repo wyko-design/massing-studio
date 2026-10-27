@@ -96,9 +96,8 @@ const cells = (c0: number, c1: number, r0: number, r1: number): Cells => ({ c0, 
 
 /** The landing layout in grid cells. Window-local cells: (0,0) = the window's top-left grid line. */
 export type LayoutSpec = {
-  /** Logo in page cells; the grid toggle mirrors its margin and is `toggleCells` square. */
+  /** Logo in page cells. Its columns are moved over the studio's left panel (`logoCells`). */
   logo: Cells;
-  toggleCells: number;
   windowCols: number;
   windowRows: number;
   /** Lowest window row (keeps the window clear of the logo). */
@@ -108,9 +107,8 @@ export type LayoutSpec = {
 
 /** The snapped Figma layout (UI-1 §5) on the 32 px grid. */
 export const LAYOUT: LayoutSpec = {
-  // two cells in from the top-left corner (one past the edge strip); the toggle mirrors it on the right
+  // two cells down from the top (one past the edge strip)
   logo: cells(2, 6, 2, 4),
-  toggleCells: 1,
   windowCols: 15,
   windowRows: 19,
   minRow: 4,
@@ -131,7 +129,6 @@ export const SUGGEST_ROWS = 5;
 export const LANDING_MIN_ROWS = LAYOUT.minRow + LAYOUT.windowRows + SUGGEST_ROWS;
 export type LandingLayout = {
   logo: Cells;
-  toggle: Cells;
   window: Cells;
   topBand: Cells;
   globe: Cells;
@@ -163,6 +160,12 @@ export function modelWindow(g: Grid, spec: LayoutSpec = LAYOUT): Cells {
   return cells(col, col + side, row, row + side);
 }
 
+/** The logo on every screen: its rows from the spec, its left edge on the studio's left panel's, so the two line up. */
+export function logoCells(g: Grid, spec: LayoutSpec = LAYOUT): Cells {
+  const c0 = Math.max(EDGE_CELLS, modelWindow(g, spec).c0 - SQUARE.gap - SQUARE.panelMax);
+  return cells(c0, c0 + spec.logo.c1 - spec.logo.c0, spec.logo.r0, spec.logo.r1);
+}
+
 /** A box between two others, `t` ∈ [0, 1], on whole pixels. */
 export const lerpBox = (a: BoxStyle, b: BoxStyle, t: number): BoxStyle => ({
   left: Math.round(a.left + (b.left - a.left) * t),
@@ -191,10 +194,9 @@ export function landingLayout(g: Grid, spec: LayoutSpec = LAYOUT, paired = false
   const centred = Math.max(0, Math.floor((g.N - spec.windowCols) / 2));
   const col = paired ? besideRight(g, centred, spec.windowCols, spec.windowCols) : centred;
   const row = Math.max(spec.minRow, Math.floor((g.M - spec.windowRows) / 2));
-  const { logo, local } = spec;
+  const { local } = spec;
   return {
-    logo,
-    toggle: cells(g.N - logo.c0 - spec.toggleCells, g.N - logo.c0, logo.r0, logo.r0 + spec.toggleCells),
+    logo: logoCells(g, spec),
     window: cells(col, col + spec.windowCols, row, row + spec.windowRows),
     topBand: offsetCells(local.topBand, col, row),
     globe: offsetCells(local.globe, col, row),

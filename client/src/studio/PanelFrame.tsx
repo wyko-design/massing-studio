@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import arrowUrl from "../landing/assets/arrow.svg";
 import { boxStyle, type BoxStyle, type Cells, type Grid } from "../landing/grid";
 import { ShuffleText, type TextPart } from "../landing/ShuffleText";
@@ -7,10 +7,14 @@ import { useSiteHeader } from "../landing/RulesPanel";
 /** Gap between the band's label line and the buttons, as in the rules window and the input band. */
 const LABEL_GAP = 4;
 const LABEL_LINE = 12;
+/** The window grows (600 ms, landing.css rules-grow) and its header and band shimmer until this moment; then the text fades in slowly, as in the rules window. */
+const SHIMMER_MS = 2000;
+
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 /** Room under the label line for descenders (g, p, y), which `overflow: hidden` would cut. */
 const DESCENDER = 4;
 
-export type Tab<T extends string> = { id: T; label: string; count?: number };
+export type Tab<T extends string> = { id: T; label: ReactNode; count?: number };
 
 type Button = { label: string; icon?: string; onClick: () => void; disabled?: boolean; title?: string; /** The arrow's place, but a white button (its icon instead of the arrow). */ white?: boolean };
 
@@ -22,7 +26,7 @@ type Props<T extends string> = {
   heading: [string, string];
   onBack?: () => void;
   /** What the header says beside the heading: the site (plot chip, address) unless given; without lines only the chip, centred. */
-  details?: { chip: string; lines?: [string, string] };
+  details?: { chip: string; chipIcon?: string; lines?: [string, string] };
   tabs?: Tab<T>[];
   tab?: T;
   onTab?: (tab: T) => void;
@@ -58,6 +62,12 @@ export function bandButtons(band: Cells, hasSecondary: boolean, hasGo: boolean):
  */
 export function PanelFrame<T extends string>({ grid, panel, band: bandCells, heading, onBack, details, tabs, tab, onTab, children, fit, status, busy, secondary, go }: Props<T>) {
   const site = useSiteHeader();
+  const [revealed, setRevealed] = useState(reducedMotion);
+  useEffect(() => {
+    if (revealed) return;
+    const id = setTimeout(() => setRevealed(true), SHIMMER_MS);
+    return () => clearTimeout(id);
+  }, [revealed]);
   const chip = details?.chip ?? site.chip;
   const chipOnly = !!details && !details.lines;
   const [street, place] = details?.lines ?? [site.street, site.place];
@@ -73,7 +83,7 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
   const statusStyle: CSSProperties = { left: line.left, top: line.top - LABEL_GAP - LABEL_LINE, height: LABEL_LINE + DESCENDER, width: line.width, whiteSpace: "pre", overflow: "hidden" };
 
   return (
-    <div className={`box rules-grow studio-panel${panel.c1 - panel.c0 < 13 ? " narrow" : ""}`} style={win}>
+    <div className={`box rules-grow studio-panel${panel.c1 - panel.c0 < 13 ? " narrow" : ""}${revealed ? "" : " growing"}`} style={win}>
       <section className="box window rules-window" style={{ left: 0, top: 0, width: win.width, height: win.height }} aria-label={heading.join(" ")} />
       <div className="box rules-top" style={{ left: top.left + 1, top: top.top + 1, width: top.width - 2, height: top.height - 2 }}>
         <header className="rules-header">
@@ -83,7 +93,10 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
             {heading[1]}
           </h2>
           <div className="rules-details">
-            <span className="rules-chip t-semimono">{chip}</span>
+            <span className="rules-chip t-semimono">
+              {chip}
+              {details?.chipIcon && <img src={details.chipIcon} alt="" width={12} height={12} />}
+            </span>
             {!chipOnly && (
               <div className="rules-where">
                 <button type="button" className="rules-back" aria-label="Back" disabled={!onBack} onClick={onBack} style={onBack ? undefined : { visibility: "hidden" }}>
@@ -117,9 +130,9 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
           {children}
         </ul>
       </div>
-      {hasBand && <div className="box input-band rules-band" style={band} />}
+      {hasBand && <div className={`box input-band rules-band${go?.white && !status && !secondary ? " bare" : ""}`} style={band} />}
       {status && (
-        <label className="box t-semimono t-label rules-count on" style={statusStyle} aria-live="polite">
+        <label className={`box t-semimono t-label rules-count${revealed ? " on" : ""}`} style={statusStyle} aria-live="polite">
           <ShuffleText parts={status} scrambling={busy} />
         </label>
       )}

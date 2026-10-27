@@ -1,5 +1,6 @@
 import { PARAM_RANGES, PRIORITY_KEYS, PROGRAMME_RANGES, TEMPLATES, TYPOLOGY_LABELS, type MassingParams, type PriorityKey, type Programme, type Typology } from "@massing/shared";
 import areaIcon from "../landing/assets/rules/area.svg";
+import checkIcon from "../landing/assets/rules/check.svg";
 import coverageIcon from "../landing/assets/rules/coverage.svg";
 import farIcon from "../landing/assets/rules/far.svg";
 import functionsIcon from "../landing/assets/rules/functions.svg";
@@ -9,12 +10,13 @@ import parkingIcon from "../landing/assets/rules/parking.svg";
 import setbacksIcon from "../landing/assets/rules/setbacks.svg";
 import subIcon from "../landing/assets/rules/sub.svg";
 import suggestIcon from "../landing/assets/rules/suggest.svg";
+import unknownIcon from "../landing/assets/rules/unknown.svg";
 import type { Grid } from "../landing/grid";
 import type { TextPart } from "../landing/ShuffleText";
 import { OPTION_IDS, isPreset, optionText, useMassing, useMassingStore, useOptionParams, useOptionText, type OptionId } from "../state/massingStore";
 import { useAiStore, type Call } from "../state/aiStore";
 import { PanelFrame, type Tab } from "./PanelFrame";
-import { ActionRow, CheckTag, Note, PairRow, PickRow, Section, SegmentRow, SliderRow, type PairCell } from "./rows";
+import { ActionRow, CheckRow, CheckTag, Note, PairRow, PickRow, Section, SegmentRow, SliderRow, ValueRow, type PairCell } from "./rows";
 import type { PanelCells } from "./layout";
 
 const PRIORITY_LABELS: Record<PriorityKey, string> = { units: "Homes", daylight: "Daylight", lowProfile: "Low profile", openSpace: "Open space", simplicity: "Simplicity" };
@@ -32,7 +34,18 @@ const RULE_ICONS: Record<string, string> = {
   "Inside buildable envelope": areaIcon,
 };
 
-/** Rule names short enough for a half row under "Rules" (the full name is in the hover detail). */
+/** Rule names for the narrow panels' title cells (the full name is in the row's hover detail). */
+const RULE_NAMES: Record<string, string> = {
+  "Allowed functions": "Functions",
+  "Max building height": "Max height",
+  "Max gutter height": "Max gutter",
+  "Max coverage (0–1)": "Max coverage",
+  "Max FAR": "Max FAR",
+  "Parking norm": "Parking norm",
+  "Inside buildable envelope": "In envelope",
+};
+
+/** Shorter still, for a half row under "Rules" when the page is too short for one rule per row. */
 const RULE_SHORT: Record<string, string> = {
   "Allowed functions": "Functions",
   "Max building height": "Height",
@@ -218,7 +231,19 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
   const generate = useAiStore((s) => s.generateDirections);
   const resetOption = useMassingStore((s) => s.resetOption);
   const status = useStatus(active);
-  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => (isPreset(id) ? { id, label: optionText(id, custom).name } : { id, label: "Your brief" }));
+  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => {
+    const [a, b] = twoLines(isPreset(id) ? optionText(id, custom).name : "Your brief");
+    return {
+      id,
+      label: (
+        <>
+          {a}
+          <br />
+          {b}
+        </>
+      ),
+    };
+  });
   return (
     <PanelFrame
       grid={grid}
@@ -263,10 +288,17 @@ function TradeOffs({ id }: { id: OptionId }) {
 /** Pairs of cells, two to a row. */
 const pairs = <T,>(xs: T[]): [T, T?][] => Array.from({ length: Math.ceil(xs.length / 2) }, (_, i) => [xs[2 * i]!, xs[2 * i + 1]]);
 
-/** The option's computed numbers (never the model's) and the rule check, two to a row so the panel never scrolls. */
-function OptionDetails({ id }: { id: OptionId }) {
+/** Rows the full layout needs: trade-offs (two), "Parameters" and its seven rows, "Rules" and one row per rule. */
+const fullRows = (tradeOffs: boolean, rules: number) => (tradeOffs ? 2 : 0) + 1 + 7 + 1 + rules;
+
+/**
+ * The option's computed numbers (never the model's) and the rule check, one per row with a note. The panel never scrolls:
+ * when the page leaves fewer rows than that, numbers and rules go two to a row.
+ */
+function OptionDetails({ id, rows }: { id: OptionId; rows: number }) {
   const result = useMassing(id);
   const option = useOptionParams(id);
+  const text = useOptionText(id);
   const targetUnits = useMassingStore((s) => s.programme.targetUnits);
   if (!option)
     return (
@@ -276,11 +308,30 @@ function OptionDetails({ id }: { id: OptionId }) {
     );
   if (!result) return <Note muted>No massing yet: the site and its rules are still loading.</Note>;
   const m = result.metrics;
+  if (rows >= fullRows(text.tradeOffs.length > 0, result.compliance.length)) {
+    return (
+      <>
+        <TradeOffs id={id} />
+        <Section label="Parameters" />
+        <ValueRow icon={areaIcon} label="Footprint" value={`${fmt(m.footprint, 0)} m²`} />
+        <ValueRow icon={areaIcon} label="GFA" value={`${fmt(m.gfa, 0)} m²`} note={<span className="muted">gross floor area</span>} />
+        <ValueRow icon={coverageIcon} label="Coverage" value={fmt(m.coverage, 2)} note={<span className="muted">footprint ÷ plot area</span>} />
+        <ValueRow icon={farIcon} label="FAR" value={fmt(m.far, 2)} note={<span className="muted">GFA ÷ plot area</span>} />
+        <ValueRow icon={heightIcon} turned label="Height" value={`${fmt(m.height)} m`} note={`${m.floors} ${m.floors === 1 ? "floor" : "floors"}`} />
+        <ValueRow icon={functionsIcon} label="Homes (est.)" value={m.estUnits} note={<span className="muted">target {targetUnits}</span>} />
+        <ValueRow icon={subIcon} label="Sun score" value={fmt(m.facadeSunScore, 2)} note={<span className="muted">1 = long sides face south</span>} />
+        <Section label="Rules" />
+        {result.compliance.map((c) => (
+          <CheckRow key={c.rule} icon={RULE_ICONS[c.rule]} label={RULE_NAMES[c.rule] ?? c.rule.replace(" (0–1)", "")} status={c.status} detail={c.detail} />
+        ))}
+      </>
+    );
+  }
   const numbers: PairCell[] = [
     { icon: areaIcon, label: "Footprint", value: `${fmt(m.footprint, 0)} m²` },
     { icon: areaIcon, label: "GFA", value: `${fmt(m.gfa, 0)} m²`, detail: "Gross floor area" },
-    { icon: coverageIcon, label: "Coverage", value: fmt(m.coverage, 2) },
-    { icon: farIcon, label: "FAR", value: fmt(m.far, 2), detail: "Floor area ratio" },
+    { icon: coverageIcon, label: "Coverage", value: fmt(m.coverage, 2), detail: "Footprint ÷ plot area" },
+    { icon: farIcon, label: "FAR", value: fmt(m.far, 2), detail: "GFA ÷ plot area" },
     { icon: heightIcon, turned: true, label: "Height", value: `${fmt(m.height)} m` },
     { icon: heightIcon, turned: true, label: "Floors", value: m.floors },
     { icon: functionsIcon, label: "Homes", value: m.estUnits, detail: `Estimated; target ${targetUnits}` },
@@ -320,18 +371,21 @@ export function OptionInfo({ grid, cells, onPresent }: { grid: Grid; cells: Pane
   const text = useOptionText(active);
   const result = useMassing(active);
   const failing = result?.compliance.filter((c) => c.status === "fail").length ?? 0;
-  const chip = !result ? "Rules unknown" : failing ? `${failing} ${failing === 1 ? "rule" : "rules"} not met` : "Rules met";
+  const chip = !result ? "RULES UNKNOWN" : failing ? `${failing} ${failing === 1 ? "RULE" : "RULES"} NOT MET` : "RULES MET";
+  const chipIcon = !result ? undefined : failing ? unknownIcon : checkIcon;
+  // body rows: the panel above its band, less the header's three
+  const rows = cells.band.r0 - cells.panel.r0 - 3;
   return (
     <PanelFrame
       grid={grid}
       panel={cells.panel}
       band={cells.band}
       heading={twoLines(text.name)}
-      details={{ chip }}
+      details={{ chip, chipIcon }}
       fit
       go={{ label: "Export", onClick: onPresent, disabled: !result }}
     >
-      <OptionDetails id={active} />
+      <OptionDetails id={active} rows={rows} />
     </PanelFrame>
   );
 }
