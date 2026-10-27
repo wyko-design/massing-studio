@@ -189,6 +189,36 @@
   background: var(--background);
 }
 
+/* title · a one-cell check box (its borders on the grid lines 4/5 or 5/6 cells in) · note */
+.landing.studio .row.box-row {
+  grid-template-columns: 159px 33px 1fr;
+}
+
+.landing.studio .studio-panel.narrow .row.box-row {
+  grid-template-columns: 127px 33px 1fr;
+}
+
+.landing.studio .box-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--stroke);
+  border-right: 1px solid var(--stroke);
+  background: var(--white);
+  cursor: pointer;
+}
+
+.landing.studio .box-cell[aria-checked="true"] {
+  background: var(--blue);
+}
+
+.landing.studio .box-cell:focus-visible {
+  outline: 1px solid var(--blue);
+  outline-offset: -1px;
+}
+
 .landing.studio .row.split {
   grid-template-columns: 159px 97px 96px 1fr;
 }
@@ -380,6 +410,12 @@
 .landing.studio .segments button[aria-pressed="true"] {
   background: var(--white);
   color: var(--blue);
+}
+
+/* the current camera view */
+.landing.studio .segments.solid button[aria-pressed="true"] {
+  background: var(--blue);
+  color: var(--white);
 }
 
 .landing.studio .segments button:disabled {

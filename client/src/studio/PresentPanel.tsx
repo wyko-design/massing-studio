@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import areaIcon from "../landing/assets/rules/area.svg";
 import coverageIcon from "../landing/assets/rules/coverage.svg";
 import functionsIcon from "../landing/assets/rules/functions.svg";
@@ -9,11 +9,11 @@ import type { TextPart } from "../landing/ShuffleText";
 import { usePresentStore } from "../state/presentStore";
 import { useSiteStore } from "../state/siteStore";
 import { OPTION_IDS, optionText, useMassingStore, type OptionId } from "../state/massingStore";
-import { VIEW_PRESETS, siteView, type ViewPreset } from "../landing/model/siteView";
+import { VIEW_PRESETS, presetView, siteView, type SiteView, type ViewPreset } from "../landing/model/siteView";
 import { MULTIPLIERS, exportSide, type Multiplier } from "../present/frame";
 import { generateReport } from "../report/generate";
 import { PanelFrame } from "./PanelFrame";
-import { PickRow, Section, SegmentRow, Segments, ToggleRow, ValueRow } from "./rows";
+import { BoxRow, PickRow, Section, SegmentRow, Segments, ValueRow } from "./rows";
 import type { PanelCells } from "./layout";
 
 const fileSafe = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -27,6 +27,30 @@ const OUTPUTS: { id: Output; label: string; note: string; icon: string }[] = [
   { id: "full", label: "Full report", note: "PDF + AI text", icon: suggestIcon },
 ];
 
+const PRESETS = Object.keys(VIEW_PRESETS) as ViewPreset[];
+
+/** Same direction (azimuth and polar; zoom and pan aside); straight down matches whatever the azimuth. */
+function sameDirection(a: SiteView, b: SiteView): boolean {
+  if (a.polar < 0.01 && b.polar < 0.01) return true;
+  const turn = Math.abs(((a.azimuth - b.azimuth + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+  return turn < 0.01 && Math.abs(a.polar - b.polar) < 0.01;
+}
+
+/** The preset the camera looks from now, or null once it has been turned away (checked a few times a second). */
+function useCurrentPreset(): ViewPreset | null {
+  const [current, setCurrent] = useState<ViewPreset | null>(null);
+  useEffect(() => {
+    const check = () => {
+      const view = siteView()?.get();
+      setCurrent(view ? (PRESETS.find((k) => sameDirection(view, presetView(k))) ?? null) : null);
+    };
+    check();
+    const id = setInterval(check, 250);
+    return () => clearInterval(id);
+  }, []);
+  return current;
+}
+
 type Run = { status: "idle" } | { status: "working"; message: string } | { status: "error"; message: string } | { status: "done"; saved: string[] };
 
 function download(blob: Blob, fileName: string) {
@@ -39,7 +63,7 @@ function download(blob: Blob, fileName: string) {
 }
 
 /** Export, right of the model: the option, the view, the image size and what to write; one button writes every checked file. */
-export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }) {
+export function PresentOutput({ grid, cells, onBack }: { grid: Grid; cells: PanelCells; onBack: () => void }) {
   const p = usePresentStore();
   const scene = useSiteStore((s) => s.scene);
   const active = useMassingStore((s) => s.active);
@@ -48,7 +72,7 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
   const [outputs, setOutputs] = useState<Record<Output, boolean>>({ png: true, pdf: false, svg: false, full: false });
   const [run, setRun] = useState<Run>({ status: "idle" });
   const side = exportSide(p.multiplier);
-  const presets = Object.keys(VIEW_PRESETS) as ViewPreset[];
+  const view = useCurrentPreset();
   const chosen = OUTPUTS.filter((o) => outputs[o.id]);
   const working = run.status === "working" || p.exportState.status === "rendering";
 
@@ -98,6 +122,7 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
       band={cells.band}
       heading={["Export", ""]}
       details={false}
+      onBack={onBack}
       status={status}
       busy={run.status === "working"}
       go={{ label: "Export", disabled: working || !scene || chosen.length === 0, onClick: () => void exportAll() }}
@@ -112,15 +137,15 @@ export function PresentOutput({ grid, cells }: { grid: Grid; cells: PanelCells }
       />
       <Section label="Views" />
       <li className="row full">
-        {/* presets are actions, not states: none stays pressed */}
-        <Segments<ViewPreset | ""> value="" label="Views" onChange={(k) => k && p.applyPreset(k)} options={presets.map((k) => ({ value: k, text: VIEW_PRESETS[k] }))} />
+        {/* the preset the camera looks from stays pressed until the view is turned away */}
+        <Segments<ViewPreset | ""> solid value={view ?? ""} label="Views" onChange={(k) => k && p.applyPreset(k)} options={PRESETS.map((k) => ({ value: k, text: VIEW_PRESETS[k] }))} />
       </li>
       <Section label="Image" />
       <SegmentRow<Multiplier> icon={coverageIcon} label="Resolution" value={p.multiplier} onChange={p.setMultiplier} options={MULTIPLIERS.map((m) => ({ value: m, text: `${m}×` }))} />
       <ValueRow icon={areaIcon} label="Size" value={`${side} × ${side} px`} wide />
-      <Section label="Report" />
+      <Section label="Contents" />
       {OUTPUTS.map((o) => (
-        <ToggleRow key={o.id} icon={o.icon} label={o.label} on={outputs[o.id]} onChange={(on) => setOutputs((s) => ({ ...s, [o.id]: on }))} note={o.note} />
+        <BoxRow key={o.id} icon={o.icon} label={o.label} on={outputs[o.id]} onChange={(on) => setOutputs((s) => ({ ...s, [o.id]: on }))} note={o.note} />
       ))}
     </PanelFrame>
   );

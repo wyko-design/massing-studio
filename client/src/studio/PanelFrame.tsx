@@ -25,7 +25,8 @@ type Props<T extends string> = {
   /** Two lines, like "Zoning / and limits". */
   heading: [string, string];
   onBack?: () => void;
-  /** What the header says beside the heading: the site (plot chip, address) unless given; without lines only the chip, centred. */
+  /** What the header says beside the heading: the site (plot chip, address) unless given; without lines only the chip, centred;
+   *  false: nothing, and the back arrow sits left of the heading. */
   details?: { chip: string; chipIcon?: string; lines?: [string, string] } | false;
   tabs?: Tab<T>[];
   tab?: T;
@@ -87,6 +88,14 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
       <section className="box window rules-window" style={{ left: 0, top: 0, width: win.width, height: win.height }} aria-label={heading.join(" ")} />
       <div className="box rules-top" style={{ left: top.left + 1, top: top.top + 1, width: top.width - 2, height: top.height - 2 }}>
         <header className="rules-header">
+          {details === false && onBack && (
+            <button type="button" className="rules-back" aria-label="Back" onClick={onBack}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden style={{ display: "block", transform: "scaleX(-1)" }}>
+                <path d="M3.33333 8H12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+                <path d="M8 3.33333L12.6667 8L8 12.6667" stroke="var(--stroke)" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
           <h2 className="rules-heading t-regular">
             {heading[0]}
             <br />

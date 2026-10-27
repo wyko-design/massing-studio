@@ -112,9 +112,9 @@ export function SliderRow({ icon, label, value, spec, onChange, sub, disabled, t
 export type Choice<T> = { value: T; text: ReactNode; disabled?: boolean; title?: string };
 
 /** Adjoining choice cells: the chosen one white with blue text. */
-export function Segments<T extends string | number>({ value, options, onChange, label }: { value: T; options: Choice<T>[]; onChange: (v: T) => void; label: string }) {
+export function Segments<T extends string | number>({ value, options, onChange, label, solid }: { value: T; options: Choice<T>[]; onChange: (v: T) => void; label: string; /** The pressed one blue with white text. */ solid?: boolean }) {
   return (
-    <div className="segments t-semimono" role="group" aria-label={label}>
+    <div className={`segments t-semimono${solid ? " solid" : ""}`} role="group" aria-label={label}>
       {options.map((o) => (
         <button key={String(o.value)} type="button" aria-pressed={o.value === value} disabled={o.disabled} title={o.title} onClick={() => onChange(o.value)}>
           {o.text}
@@ -135,6 +135,23 @@ export function SegmentRow<T extends string | number>({ icon, label, value, opti
 }
 
 /** Title · on/off box · note. */
+/** Title · a one-cell check box (blue with a white tick when on, empty white when off) · a note. */
+export function BoxRow({ icon, label, on, onChange, note }: { icon?: string; label: string; on: boolean; onChange: (on: boolean) => void; note?: ReactNode }) {
+  return (
+    <li className="row box-row">
+      <Title icon={icon} label={label} />
+      <button type="button" className="box-cell" role="checkbox" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}>
+        {on && (
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+            <path d="M10 3L4.5 8.5L2 6" stroke="var(--white)" strokeLinejoin="round" />
+          </svg>
+        )}
+      </button>
+      <div className="cell-note t-semimono">{note && <span className="muted">{note}</span>}</div>
+    </li>
+  );
+}
+
 export function ToggleRow({ icon, label, on, onChange, note, disabled }: { icon?: string; label: string; on: boolean; onChange: (on: boolean) => void; note?: ReactNode; disabled?: boolean }) {
   return (
     <li className="row">

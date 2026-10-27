@@ -59,7 +59,7 @@ function ExportRunner() {
 
 /**
  * The studio's panels around the site model's square: Directions (controls left, the chosen option right), Export
- * (one panel at the right; browser back returns to Directions) and the rules (the landing's rules window, right of the square).
+ * (one panel at the right; its back arrow returns to Directions) and the rules (the landing's rules window, right of the square).
  */
 export function StudioPanels({ grid, layout, screen }: { grid: Grid; layout: StudioLayout; screen: StudioScreen }) {
   const go = (s: StudioScreen) => {
@@ -77,7 +77,7 @@ export function StudioPanels({ grid, layout, screen }: { grid: Grid; layout: Stu
             <OptionInfo grid={grid} cells={layout.right} onPresent={() => go("present")} />
           </>
         ) : (
-          <PresentOutput grid={grid} cells={layout.right} />
+          <PresentOutput grid={grid} cells={layout.right} onBack={() => go("directions")} />
         )}
       </div>
       <ExportRunner />
