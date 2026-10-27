@@ -7,8 +7,10 @@ import { useSiteHeader } from "../landing/RulesPanel";
 /** Gap between the band's label line and the buttons, as in the rules window and the input band. */
 const LABEL_GAP = 4;
 const LABEL_LINE = 12;
-/** The window grows (600 ms, landing.css rules-grow) and its header and band shimmer until this moment; then the text fades in slowly, as in the rules window. */
+/** The window grows (600 ms, landing.css rules-grow) and its header and band shimmer until this moment; then the contents fade in slowly, as in the rules window. */
 const SHIMMER_MS = 2000;
+/** The fade (studio.css .fading transitions). */
+const FADE_MS = 800;
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 /** Room under the label line for descenders (g, p, y), which `overflow: hidden` would cut. */
@@ -63,12 +65,14 @@ export function bandButtons(band: Cells, hasSecondary: boolean, hasGo: boolean):
  */
 export function PanelFrame<T extends string>({ grid, panel, band: bandCells, heading, onBack, details, tabs, tab, onTab, children, fit, status, busy, secondary, go }: Props<T>) {
   const site = useSiteHeader();
-  const [revealed, setRevealed] = useState(reducedMotion);
+  // growing: lines drawn, contents hidden · fading: contents fade in · done
+  const [phase, setPhase] = useState<"growing" | "fading" | "done">(() => (reducedMotion() ? "done" : "growing"));
   useEffect(() => {
-    if (revealed) return;
-    const id = setTimeout(() => setRevealed(true), SHIMMER_MS);
+    if (phase === "done") return;
+    const id = setTimeout(() => setPhase(phase === "growing" ? "fading" : "done"), phase === "growing" ? SHIMMER_MS : FADE_MS);
     return () => clearTimeout(id);
-  }, [revealed]);
+  }, [phase]);
+  const revealed = phase !== "growing";
   const chip = details ? details.chip : site.chip;
   const chipOnly = !!details && !details.lines;
   const [street, place] = (details && details.lines) || [site.street, site.place];
@@ -84,7 +88,7 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
   const statusStyle: CSSProperties = { left: line.left, top: line.top - LABEL_GAP - LABEL_LINE, height: LABEL_LINE + DESCENDER, width: line.width, whiteSpace: "pre", overflow: "hidden" };
 
   return (
-    <div className={`box rules-grow studio-panel${panel.c1 - panel.c0 < 13 ? " narrow" : ""}${revealed ? "" : " growing"}`} style={win}>
+    <div className={`box rules-grow studio-panel${panel.c1 - panel.c0 < 13 ? " narrow" : ""}${phase === "done" ? "" : ` ${phase}`}`} style={win}>
       <section className="box window rules-window" style={{ left: 0, top: 0, width: win.width, height: win.height }} aria-label={heading.join(" ")} />
       <div className="box rules-top" style={{ left: top.left + 1, top: top.top + 1, width: top.width - 2, height: top.height - 2 }}>
         <header className="rules-header">

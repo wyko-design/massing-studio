@@ -90,17 +90,43 @@
   overflow: hidden;
 }
 
-/* the reveal, as the rules window's: the window grows, header and band shimmer, then the tabs, the body and the band's
-   buttons fade in slowly (header text and buttons: landing.css .rules-grow) */
-.landing.studio .studio-panel .panel-tabs,
-.landing.studio .studio-panel .panel-body,
-.landing.studio .studio-panel > .rules-go {
-  transition: opacity 800ms ease-out; /* FADE_MS in RulesPanel.tsx */
+/* the reveal, as the rules window's: the window grows with all its lines, cells and buttons drawn at once, header and band
+   shimmer, then only the contents (text, icons, fields, sliders) fade in slowly. Header text: landing.css .rules-grow. */
+.landing.studio .studio-panel.growing > .rules-fill,
+.landing.studio .studio-panel.growing > .rules-go {
+  opacity: 1;
 }
 
-.landing.studio .studio-panel.growing .panel-tabs,
-.landing.studio .studio-panel.growing .panel-body {
+.landing.studio .studio-panel.growing .panel-tabs button,
+.landing.studio .studio-panel.growing .panel-body *,
+.landing.studio .studio-panel.growing > .rules-fill {
+  color: transparent !important;
+}
+
+.landing.studio .studio-panel.growing .panel-body ::placeholder {
+  color: transparent !important;
+}
+
+.landing.studio .studio-panel.growing .panel-body :is(img, svg, input, textarea),
+.landing.studio .studio-panel.growing .panel-body .rules-tag,
+.landing.studio .studio-panel.growing > .rules-fill img,
+.landing.studio .studio-panel.growing > .rules-go > * {
   opacity: 0;
+}
+
+/* only while the contents fade in (FADE_MS in RulesPanel.tsx): afterwards hovers change at their own pace */
+.landing.studio .studio-panel.fading .panel-tabs button,
+.landing.studio .studio-panel.fading .panel-body *,
+.landing.studio .studio-panel.fading > .rules-fill,
+.landing.studio .studio-panel.fading > .rules-fill img,
+.landing.studio .studio-panel.fading > .rules-go > * {
+  transition: color 800ms ease-out, opacity 800ms ease-out;
+}
+
+/* the back arrow left of a heading (Export): close to the window's edge and to the heading */
+.landing.studio .rules-header > .rules-back:first-child {
+  width: 16px;
+  margin: 0 4px 0 -8px;
 }
 
 /* a band holding only the white Reset button draws no line above it */
