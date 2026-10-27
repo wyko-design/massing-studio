@@ -11,7 +11,6 @@ import subIcon from "../landing/assets/rules/sub.svg";
 import suggestIcon from "../landing/assets/rules/suggest.svg";
 import type { Grid } from "../landing/grid";
 import type { TextPart } from "../landing/ShuffleText";
-import { useEnvelope } from "../state/siteStore";
 import { OPTION_IDS, isPreset, optionText, useMassing, useMassingStore, useOptionParams, useOptionText, type OptionId } from "../state/massingStore";
 import { useAiStore, type Call } from "../state/aiStore";
 import { PanelFrame, type Tab } from "./PanelFrame";
@@ -216,7 +215,7 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
   const directions = useAiStore((s) => s.directions.status);
   const generate = useAiStore((s) => s.generateDirections);
   const status = useStatus(active);
-  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => (isPreset(id) ? { id, label: optionText(id, custom).name } : { id, label: "Custom", accent: true }));
+  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => (isPreset(id) ? { id, label: optionText(id, custom).name } : { id, label: "Your brief" }));
   return (
     <PanelFrame
       grid={grid}
@@ -240,15 +239,11 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
   );
 }
 
-/** The idea behind the option: the preset's words, or the AI's for the custom one. */
+/** What the option gives up (the preset's words, or the AI's), and whether the user changed it. */
 function DirectionNote({ id, edited }: { id: OptionId; edited: boolean }) {
   const text = useOptionText(id);
   return (
     <>
-      <Note white>
-        <div className="name">{text.name}</div>
-        {text.intent}
-      </Note>
       {text.tradeOffs.length > 0 && (
         <Note small>
           <ul>
@@ -265,33 +260,23 @@ function DirectionNote({ id, edited }: { id: OptionId; edited: boolean }) {
   );
 }
 
-/** The option's parameters as set, its computed numbers (never the model's), the indicative rule check, the clamps and assumptions. */
+/** The option's computed numbers (never the model's) and the rule check. */
 function OptionDetails({ id }: { id: OptionId }) {
   const result = useMassing(id);
   const option = useOptionParams(id);
-  const envelope = useEnvelope();
   const targetUnits = useMassingStore((s) => s.programme.targetUnits);
   if (!option)
     return (
       <Note small muted>
-        No custom option yet. Write a brief and set the priorities on the Custom tab, then “Generate option”.
+        No option yet. Write a brief and set the priorities on the Your brief tab, then “Generate option”.
       </Note>
     );
-  if (!result || !envelope) return <Note muted>No massing yet: the site and its rules are still loading.</Note>;
+  if (!result) return <Note muted>No massing yet: the site and its rules are still loading.</Note>;
   const m = result.metrics;
-  const p = option.params;
   return (
     <>
       <DirectionNote id={id} edited={option.edited} />
-      <Section label="Parameters" hint="as set" />
-      <ValueRow icon={areaIcon} label="Typology" value={TYPOLOGY_LABELS[p.typology]} />
-      <ValueRow icon={heightIcon} turned label="Floors" value={p.floors} />
-      <ValueRow icon={setbacksIcon} label="Depth" value={`${fmt(p.depth)} m`} />
-      <ValueRow icon={coverageIcon} label="Coverage" value={fmt(p.coverageTarget, 2)} note={<span className="muted">target</span>} />
-      <ValueRow icon={heightIcon} turned label="Floor heights" value={`${fmt(p.groundFloorHeight)} / ${fmt(p.floorHeight)} m`} note={<span className="muted">ground / upper</span>} />
-      <ValueRow icon={setbacksIcon} label="Alignment" value={p.alignment === "street" ? "Street" : "East–west"} />
-      <ValueRow icon={heightIcon} label="Roof" value={p.roof === "flat" ? "Flat" : "Pitched"} />
-      <Section label="Computed" hint="by code" />
+      <Section label="Parameters" />
       <ValueRow icon={areaIcon} label="Footprint" value={`${fmt(m.footprint, 0)} m²`} />
       <ValueRow icon={areaIcon} label="GFA" value={`${fmt(m.gfa, 0)} m²`} note={<span className="muted">gross floor area</span>} />
       <ValueRow icon={coverageIcon} label="Coverage" value={fmt(m.coverage, 2)} />
@@ -299,67 +284,35 @@ function OptionDetails({ id }: { id: OptionId }) {
       <ValueRow icon={heightIcon} turned label="Height" value={`${fmt(m.height)} m`} note={`${m.floors} ${m.floors === 1 ? "floor" : "floors"}`} />
       <ValueRow icon={functionsIcon} label="Homes (est.)" value={m.estUnits} note={<span className="muted">target {targetUnits}</span>} />
       <ValueRow icon={subIcon} label="Sun score" value={fmt(m.facadeSunScore, 2)} note={<span className="muted">1 = long sides face south</span>} />
-      <Section label="Rules" hint="indicative" />
+      <Section label="Rules" />
       {result.compliance.map((c) => (
         <CheckRow key={c.rule} icon={RULE_ICONS[c.rule]} label={RULE_SHORT[c.rule] ?? c.rule.replace(" (0–1)", "")} status={c.status} detail={c.detail} />
       ))}
-      <Section label="Clamps" hint={result.clamps.length ? `${result.clamps.length}` : "none"} />
-      <Note small>
-        {result.clamps.length ? (
-          <ul>
-            {result.clamps.map((c, i) => (
-              <li key={i}>
-                <span>{c}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          "None: the option is built as asked."
-        )}
-      </Note>
-      <Section label="Assumptions" />
-      <Note small>
-        <ul>
-          {[...envelope.notes, ...result.assumptions].map((a, i) => (
-            <li key={i}>
-              <span>{a}</span>
-            </li>
-          ))}
-        </ul>
-      </Note>
-      <Note small muted>
-        Indicative early study. Not a permit check.
-      </Note>
     </>
   );
 }
 
-/** Directions, right of the model: the option picked on the left, its parameters and how it meets the rules. The arrow goes on to Present. */
+/** A name over the header's two lines: the first word, then the rest. */
+const twoLines = (name: string): [string, string] => {
+  const [first = "", ...rest] = name.split(" ");
+  return [first, rest.join(" ")];
+};
+
+/** Directions, right of the model: the option picked on the left, its numbers and how it meets the rules. The arrow goes on to Present. */
 export function OptionInfo({ grid, cells, onPresent }: { grid: Grid; cells: PanelCells; onPresent: () => void }) {
   const active = useMassingStore((s) => s.active);
-  const option = useOptionParams(active);
   const text = useOptionText(active);
   const result = useMassing(active);
-  const m = result?.metrics;
   const failing = result?.compliance.filter((c) => c.status === "fail").length ?? 0;
   const chip = !result ? "Rules unknown" : failing ? `${failing} ${failing === 1 ? "rule" : "rules"} not met` : "Rules met";
-  const lines: [string, string] = m ? [`GFA ${fmt(m.gfa, 0)} m²`, `FAR ${fmt(m.far, 2)} · ${fmt(m.height)} m`] : ["", ""];
-  const status: TextPart[] = !option
-    ? [{ text: "No custom option yet" }]
-    : !result
-      ? [{ text: "Waiting for the site and its rules" }]
-      : failing
-        ? [{ text: text.name, className: "accent" }, { text: `, ${failing} ${failing === 1 ? "rule" : "rules"} not met` }]
-        : [{ text: text.name, className: "accent" }, { text: ", no rule broken" }];
   return (
     <PanelFrame
       grid={grid}
       panel={cells.panel}
       band={cells.band}
-      heading={[isPreset(active) ? text.name : "Custom", option ? TYPOLOGY_LABELS[option.params.typology] : "not generated"]}
-      details={{ chip, lines }}
-      status={status}
-      go={{ label: "Present", onClick: onPresent, disabled: !result }}
+      heading={twoLines(text.name)}
+      details={{ chip, lines: ["", ""] }}
+      go={{ label: "Export", onClick: onPresent, disabled: !result }}
     >
       <OptionDetails id={active} />
     </PanelFrame>

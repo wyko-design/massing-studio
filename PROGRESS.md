@@ -1029,3 +1029,9 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
 - **Checked:** 443 tests, typecheck, build; browser 1440×928: tab heights 64 px, single line under the tabs, label not clipped, Custom band.
 - **Deviations from SPEC.md:** none new.
 - **Next:** the user's instructions for the right panel.
+
+## Directions: one-cell tabs, slimmer option panel (2026-10-27)
+- **Built:** tabs back to one cell, 10/11 px type (two lines fit where needed), white; the selected tab is blue with white text. "Custom" is now "Your brief" (tab, and the option's name until the AI has named it). Right panel: header is only the option's name over two lines (first word, then the rest), the chip "Rules met / N not met" without the GFA/FAR lines; body = trade-off bullets, "Parameters" (the computed numbers: footprint, GFA, coverage, FAR, height, homes, sun score) and "Rules"; removed the description, the as-set parameter list, the hints, Clamps, Assumptions and the indicative note, and the band label; the arrow says "Export".
+- **Checked:** 443 tests, typecheck, build; browser 1440×928, no tab label overflows (70 px tabs).
+- **Deviations from SPEC.md / CLAUDE.md:** clamps and assumptions are no longer shown in the studio (still recorded and printed in the PDF report); the "indicative" note is gone from the Directions panel (the PDF keeps its disclaimer).
+- **Next:** further right-panel or Present changes from the user.

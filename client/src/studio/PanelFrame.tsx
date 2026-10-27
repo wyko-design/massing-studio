@@ -10,7 +10,7 @@ const LABEL_LINE = 12;
 /** Room under the label line for descenders (g, p, y), which `overflow: hidden` would cut. */
 const DESCENDER = 4;
 
-export type Tab<T extends string> = { id: T; label: string; count?: number; /** Blue tab with white text. */ accent?: boolean };
+export type Tab<T extends string> = { id: T; label: string; count?: number };
 
 type Button = { label: string; icon?: string; onClick: () => void; disabled?: boolean; title?: string };
 
@@ -100,7 +100,7 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
           <ul className="panel-tabs t-semimono" role="tablist">
             {tabs.map((t) => (
               <li key={t.id} role="presentation">
-                <button type="button" role="tab" className={t.accent ? "accent-tab" : undefined} aria-selected={t.id === tab} onClick={() => onTab?.(t.id)}>
+                <button type="button" role="tab" aria-selected={t.id === tab} onClick={() => onTab?.(t.id)}>
                   {t.label}
                   {t.count ? <span className="count">{t.count}</span> : null}
                 </button>

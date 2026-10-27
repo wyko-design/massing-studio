@@ -143,7 +143,7 @@ export function optionText(id: OptionId, custom: CustomOption | null): OptionTex
     return { name: p.name, intent: p.intent, tradeOffs: p.tradeOffs };
   }
   const d = custom?.direction;
-  return { name: d?.name ?? "Custom", intent: d?.intent ?? null, tradeOffs: d?.tradeOffs ?? [] };
+  return { name: d?.name ?? "Your brief", intent: d?.intent ?? null, tradeOffs: d?.tradeOffs ?? [] };
 }
 
 export function useOptionText(id: OptionId): OptionText {
