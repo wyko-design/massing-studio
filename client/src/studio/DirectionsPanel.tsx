@@ -52,7 +52,7 @@ function BriefTab() {
   const r = interpret.result;
   return (
     <>
-      <Section label="Brief" hint="read by the AI" />
+      <Section label="Brief" />
       <li className="row text">
         <textarea value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="e.g. starter apartments, lots of daylight, keep it low towards the neighbours" aria-label="Brief" />
         <button type="button" className="text-action t-semimono" disabled={!brief.trim() || interpret.status === "loading"} onClick={() => void interpretBrief()}>
@@ -101,12 +101,12 @@ function BriefTab() {
           )}
         </>
       )}
-      <Section label="Priorities" hint="0–5, edit freely" />
+      <Section label="Priorities" />
       {PRIORITY_KEYS.map((k) => (
         <SliderRow key={k} icon={subIcon} label={PRIORITY_LABELS[k]} value={priorities[k]} spec={{ min: 0, max: 5, step: 1 }} onChange={(v) => setPriority(k, v)} />
       ))}
       {typologyHints.length > 0 && <Note small>Typology hints from the brief: {typologyHints.map((t) => TYPOLOGY_LABELS[t]).join(", ")}</Note>}
-      <Section label="Programme" hint="assumptions" />
+      <Section label="Programme" />
       {(Object.keys(PROGRAMME_RANGES) as (keyof Programme)[]).map((k) => {
         const range = PROGRAMME_RANGES[k];
         return <SliderRow key={k} icon={functionsIcon} label={PROGRAMME_LABELS[k]} value={programme[k]} spec={{ ...range, unit: range.unit }} onChange={(v) => setProgramme({ [k]: v })} />;
@@ -130,7 +130,7 @@ function ShapeRows({ id, params }: { id: OptionId; params: MassingParams }) {
   const set = (patch: Partial<MassingParams>) => setParams(id, patch);
   return (
     <>
-      <Section label="Shape" hint="sliders only, no AI" />
+      <Section label="Shape" />
       <PickRow
         icon={areaIcon}
         label="Typology"
@@ -175,9 +175,7 @@ function PresetTab({ id }: { id: OptionId }) {
   if (!option) return null;
   return (
     <>
-      <Note small muted>
-        {text.intent}
-      </Note>
+      <Note white>{text.intent}</Note>
       <ShapeRows id={id} params={option.params} />
     </>
   );
@@ -191,8 +189,8 @@ function CustomTab() {
   if (!option) return <BriefTab />;
   return (
     <>
-      <Note small muted>
-        <b className="accent">{text.name}</b>, proposed by the AI from the brief.
+      <Note white>
+        <span className="accent">{text.name}</span>, proposed by the AI from the brief.
       </Note>
       <ShapeRows id="custom" params={option.params} />
       <ActionRow icon={overrideIcon} label="Delete option" onClick={deleteCustom} note={<span className="muted">back to the brief</span>} />
@@ -200,20 +198,13 @@ function CustomTab() {
   );
 }
 
-/** The band's label: what the custom call is doing, else what the tab is. */
-function useStatus(id: OptionId): { parts: TextPart[]; busy: boolean } {
+/** The band's label, on Custom before an option exists: what the call is doing, else what to do. Null = no band (presets, an existing option). */
+function useStatus(id: OptionId): { parts: TextPart[]; busy: boolean } | null {
   const directions = useAiStore((s) => s.directions);
   const option = useOptionParams(id);
-  if (isPreset(id)) {
-    return option?.edited
-      ? { parts: [{ text: "Preset, " }, { text: "changed by hand", className: "accent" }], busy: false }
-      : { parts: [{ text: "Preset, " }, { text: "fitted to the rules", className: "accent" }], busy: false };
-  }
+  if (isPreset(id) || option) return null;
   if (directions.status === "loading") return { parts: [{ text: "Generating an option from the brief" }], busy: true };
   if (directions.status === "error") return { parts: [{ text: "Could not generate: ", className: "accent" }, { text: directions.error ?? "" }], busy: false };
-  const warning = directions.result?.warnings[0];
-  if (option && warning) return { parts: [{ text: "Note: ", className: "accent" }, { text: warning }], busy: false };
-  if (option) return { parts: [{ text: "Custom option", className: "accent" }, { text: directions.cached ? " (offline cache)" : option.edited ? ", changed by hand" : " from the AI" }], busy: false };
   return { parts: [{ text: "Brief, priorities, then " }, { text: "generate", className: "accent" }], busy: false };
 }
 
@@ -225,7 +216,7 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
   const directions = useAiStore((s) => s.directions.status);
   const generate = useAiStore((s) => s.generateDirections);
   const status = useStatus(active);
-  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => ({ id, label: optionText(id, custom).tab }));
+  const tabs: Tab<OptionId>[] = OPTION_IDS.map((id) => (isPreset(id) ? { id, label: optionText(id, custom).name } : { id, label: "Custom", accent: true }));
   return (
     <PanelFrame
       grid={grid}
@@ -236,10 +227,10 @@ export function DirectionsControls({ grid, cells, onBack }: { grid: Grid; cells:
       tabs={tabs}
       tab={active}
       onTab={setActive}
-      status={status.parts}
-      busy={status.busy}
+      status={status?.parts}
+      busy={status?.busy}
       secondary={
-        active === "custom" && !custom
+        status
           ? { label: directions === "loading" ? "Generating…" : "Generate option", icon: suggestIcon, disabled: directions === "loading", onClick: () => void generate(), title: "The AI proposes one option from the brief and the priorities" }
           : undefined
       }

@@ -1023,3 +1023,9 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
 - **Deviations from SPEC.md:** §7/§9 the strategy generator proposes one option instead of three contrasting ones; contrast now comes from the four code-set presets.
 - **Open issues:** on the tiny placeholder plot (111 m²) the presets look alike because the envelope clamps them; the cached v1 directions answers no longer replay (v2 prompt), so offline Custom needs a new cached answer per brief; right panel redesign pending (user).
 - **Next:** the user's instructions for the right panel.
+
+## Directions tabs restyled (2026-10-27)
+- **Built:** option tabs are 2 cells tall with centred, wrapping labels "Most floor area", "Most daylight", "Most greenery", "Low development" (preset `name`s; the separate `tab` label is gone) and "Custom", which is always blue with white text (`Tab.accent`). The body's first row draws no top line under the tabs (was a doubled line). Preset descriptions use the white note of the right panel. Hints removed: "sliders only, no AI", "read by the AI", "0–5, edit freely", "assumptions". The left panel has no band on preset tabs or once a custom option exists (`PanelFrame` draws no band without label/button/arrow; the body runs to the bottom); the band stays on Custom for "Generate option". The band label box is 4 px taller so descenders ("generate") are not clipped. Prompt v2 names the presets by their new names.
+- **Checked:** 443 tests, typecheck, build; browser 1440×928: tab heights 64 px, single line under the tabs, label not clipped, Custom band.
+- **Deviations from SPEC.md:** none new.
+- **Next:** the user's instructions for the right panel.

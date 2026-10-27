@@ -27,7 +27,7 @@
   display: grid;
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
-  height: 32px;
+  height: 64px;
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--stroke);
@@ -42,15 +42,16 @@
   gap: 6px;
   height: 100%;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 0;
   border-bottom: 1px solid var(--stroke);
   background: var(--background);
   color: var(--black);
   font-size: 12px;
-  line-height: 12px;
+  line-height: 14px;
   letter-spacing: -0.12px;
-  white-space: nowrap;
+  text-align: center;
+  text-wrap: balance;
   cursor: pointer;
 }
 
@@ -66,6 +67,19 @@
   border-bottom-color: transparent;
   background: var(--white);
   color: var(--blue);
+}
+
+/* Custom: always blue with white text */
+.landing.studio .panel-tabs button.accent-tab,
+.landing.studio .panel-tabs button.accent-tab:hover,
+.landing.studio .panel-tabs button.accent-tab[aria-selected="true"] {
+  background: var(--blue);
+  color: var(--white);
+}
+
+/* the tabs close with their own bottom line, so the body's first row draws none (no doubled line under the tabs) */
+.landing.studio .panel-tabs + .panel-body > li:first-child {
+  border-top-color: transparent;
 }
 
 .landing.studio .panel-tabs .count {

@@ -11,7 +11,7 @@ What each parameter does:
 - roof: "flat" or "pitched" (pitched adds a roof above the top floor and counts towards max height).
 
 How to choose:
-- The tool already offers four fixed options: most homes, most daylight, most garden and lowest profile. This one is the user's own: follow the brief and weigh the priorities against each other instead of pushing a single extreme.
+- The tool already offers four fixed options: most floor area, most daylight, most greenery and low development. This one is the user's own: follow the brief and weigh the priorities against each other instead of pushing a single extreme.
 - Read the envelope facts. On a small or narrow envelope, a courtyard or L-block may fall back to a slab, and a depth larger than the envelope is clamped. Choose parameters that still carry the idea after the generator has fitted them.
 - Stay inside the input ranges. Asking for more than the rules allow is fine when the brief deliberately tests the limit; the tool will show the clamp.
 - name: two to four words. intent: one or two sentences on the idea and which priorities it serves. tradeOffs: two or three short phrases on what the option gives up.

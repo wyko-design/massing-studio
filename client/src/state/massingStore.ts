@@ -135,15 +135,15 @@ export function computeMassing(id: OptionId): MassingResult | null {
 }
 
 /** Names and words of an option: the preset's, or what the AI wrote for the custom one. */
-export type OptionText = { tab: string; name: string; intent: string | null; tradeOffs: string[] };
+export type OptionText = { name: string; intent: string | null; tradeOffs: string[] };
 
 export function optionText(id: OptionId, custom: CustomOption | null): OptionText {
   if (isPreset(id)) {
     const p = PRESETS[id];
-    return { tab: p.tab, name: p.name, intent: p.intent, tradeOffs: p.tradeOffs };
+    return { name: p.name, intent: p.intent, tradeOffs: p.tradeOffs };
   }
   const d = custom?.direction;
-  return { tab: "Custom", name: d?.name ?? "Custom", intent: d?.intent ?? null, tradeOffs: d?.tradeOffs ?? [] };
+  return { name: d?.name ?? "Custom", intent: d?.intent ?? null, tradeOffs: d?.tradeOffs ?? [] };
 }
 
 export function useOptionText(id: OptionId): OptionText {

@@ -4,9 +4,7 @@ import { OPTION_COLOURS, type PresetId } from "../schemas/ai";
 import { generateMassing, type MassingSite } from "./generateMassing";
 
 export type Preset = {
-  /** Short tab label. */
-  tab: string;
-  /** Full name, e.g. in headings and the report. */
+  /** Name on the tab, in headings and in the report. */
   name: string;
   intent: string;
   tradeOffs: string[];
@@ -20,29 +18,25 @@ const MAX_FLOORS = { limited: 12, unlimited: 6 };
 /** The four fixed strategies. Choices only: code fits them to the site, the generator computes everything else. */
 export const PRESETS: Record<PresetId, Preset> = {
   homes: {
-    tab: "Homes",
-    name: "Most homes",
-    intent: "A closed courtyard block to the street, as tall and as full as the rules allow. Every metre of the envelope carries homes.",
+    name: "Most floor area",
+    intent: "A closed courtyard block to the street, as tall and as full as the rules allow. Every metre of the envelope carries floor area.",
     tradeOffs: ["Little open space on the plot", "Inner corners get less daylight", "The tallest and heaviest of the options"],
     wish: { typology: "courtyard", floors: "max", groundFloorHeight: 3.5, floorHeight: 3, depth: 12, alignment: "street", coverageTarget: 0.7, roof: "flat" },
   },
   daylight: {
-    tab: "Daylight",
     name: "Most daylight",
     intent: "One shallow slab turned east–west, so the long facades face south and every home looks out on both sides.",
     tradeOffs: ["Fewer homes than a full block", "Ignores the street line", "Long, exposed facades"],
     wish: { typology: "slab", floors: 5, groundFloorHeight: 3.5, floorHeight: 3, depth: 9, alignment: "sun", coverageTarget: 0.35, roof: "flat" },
   },
   garden: {
-    tab: "Garden",
-    name: "Most garden",
-    intent: "The smallest footprint, stacked as high as allowed, to leave most of the plot as a shared garden.",
+    name: "Most greenery",
+    intent: "The smallest footprint, stacked as high as allowed, to leave most of the plot green.",
     tradeOffs: ["Tall next to the neighbours", "Few homes on each floor", "Needs lifts and a deeper structure"],
     wish: { typology: "slab", floors: "max", groundFloorHeight: 3.5, floorHeight: 3, depth: 12, alignment: "street", coverageTarget: 0.2, roof: "flat" },
   },
   low: {
-    tab: "Low",
-    name: "Lowest profile",
+    name: "Low development",
     intent: "A low L-block with a pitched roof that follows the street and keeps to the scale of the houses around it.",
     tradeOffs: ["Fewest floors, so fewer homes", "Covers more ground than the taller options", "Roof space only partly usable"],
     wish: { typology: "l_block", floors: 3, groundFloorHeight: 3.5, floorHeight: 3, depth: 10, alignment: "street", coverageTarget: 0.45, roof: "pitched" },

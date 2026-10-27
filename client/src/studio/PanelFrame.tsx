@@ -7,8 +7,10 @@ import { useSiteHeader } from "../landing/RulesPanel";
 /** Gap between the band's label line and the buttons, as in the rules window and the input band. */
 const LABEL_GAP = 4;
 const LABEL_LINE = 12;
+/** Room under the label line for descenders (g, p, y), which `overflow: hidden` would cut. */
+const DESCENDER = 4;
 
-export type Tab<T extends string> = { id: T; label: string; count?: number };
+export type Tab<T extends string> = { id: T; label: string; count?: number; /** Blue tab with white text. */ accent?: boolean };
 
 type Button = { label: string; icon?: string; onClick: () => void; disabled?: boolean; title?: string };
 
@@ -25,8 +27,8 @@ type Props<T extends string> = {
   tab?: T;
   onTab?: (tab: T) => void;
   children: ReactNode;
-  /** The band's label line; `busy` scrambles it while a call runs. */
-  status: TextPart[];
+  /** The band's label line; `busy` scrambles it while a call runs. No label, button or arrow = no band: the body runs to the bottom. */
+  status?: TextPart[];
   busy?: boolean;
   /** The outlined button (the screen's AI or secondary action), six cells wide. */
   secondary?: Button;
@@ -58,13 +60,14 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
   const [street, place] = details?.lines ?? [site.street, site.place];
   const win = boxStyle(grid, panel);
   const rel = (b: BoxStyle): BoxStyle => ({ left: b.left - win.left, top: b.top - win.top, width: b.width, height: b.height });
-  const top = rel(boxStyle(grid, { c0: panel.c0, c1: panel.c1, r0: panel.r0, r1: bandCells.r0 }));
+  const hasBand = !!(status || secondary || go);
+  const top = rel(boxStyle(grid, { c0: panel.c0, c1: panel.c1, r0: panel.r0, r1: hasBand ? bandCells.r0 : panel.r1 }));
   const band = rel(boxStyle(grid, bandCells));
   const cellsOf = bandButtons(bandCells, !!secondary, !!go);
   const secondaryBox = cellsOf.secondary && rel(boxStyle(grid, cellsOf.secondary));
   const goBox = cellsOf.go && rel(boxStyle(grid, cellsOf.go));
   const line = rel(boxStyle(grid, { c0: bandCells.c0 + 1, c1: bandCells.c1 - 1, r0: bandCells.r0 + 1, r1: bandCells.r0 + 2 }));
-  const statusStyle: CSSProperties = { left: line.left, top: line.top - LABEL_GAP - LABEL_LINE, height: LABEL_LINE, width: line.width, whiteSpace: "pre", overflow: "hidden" };
+  const statusStyle: CSSProperties = { left: line.left, top: line.top - LABEL_GAP - LABEL_LINE, height: LABEL_LINE + DESCENDER, width: line.width, whiteSpace: "pre", overflow: "hidden" };
 
   return (
     <div className={`box rules-grow studio-panel${panel.c1 - panel.c0 < 13 ? " narrow" : ""}`} style={win}>
@@ -97,7 +100,7 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
           <ul className="panel-tabs t-semimono" role="tablist">
             {tabs.map((t) => (
               <li key={t.id} role="presentation">
-                <button type="button" role="tab" aria-selected={t.id === tab} onClick={() => onTab?.(t.id)}>
+                <button type="button" role="tab" className={t.accent ? "accent-tab" : undefined} aria-selected={t.id === tab} onClick={() => onTab?.(t.id)}>
                   {t.label}
                   {t.count ? <span className="count">{t.count}</span> : null}
                 </button>
@@ -109,10 +112,12 @@ export function PanelFrame<T extends string>({ grid, panel, band: bandCells, hea
           {children}
         </ul>
       </div>
-      <div className="box input-band rules-band" style={band} />
-      <label className="box t-semimono t-label rules-count on" style={statusStyle} aria-live="polite">
-        <ShuffleText parts={status} scrambling={busy} />
-      </label>
+      {hasBand && <div className="box input-band rules-band" style={band} />}
+      {status && (
+        <label className="box t-semimono t-label rules-count on" style={statusStyle} aria-live="polite">
+          <ShuffleText parts={status} scrambling={busy} />
+        </label>
+      )}
       {secondary && secondaryBox && (
         <button type="button" className="box rules-fill t-semimono t-input" style={secondaryBox} disabled={secondary.disabled} title={secondary.title} onClick={secondary.onClick}>
           {secondary.label}
