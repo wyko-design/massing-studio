@@ -15,3 +15,13 @@ data/cache/_geo/plot-*
 # demo runs offline (key: PLOT_VERSION|address id|radius, see server/src/routes/geo.ts)
 !data/cache/_geo/plot-aeb2ca8e90d3.json
 !data/cache/_geo/plot-813661c43408.json
+
+# demo video (Remotion project in video/): sources only. Recordings, the
+# rendered video and the third-party Remotion agent skills stay local.
+video/out/
+video/node_modules/
+video/public/*.mp4
+video/.agents/
+video/.claude/
+video/skills-lock.json
+MassingStudio_demo.mp4

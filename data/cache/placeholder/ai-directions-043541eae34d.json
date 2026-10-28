@@ -1,0 +1,84 @@
+{
+  "ok": true,
+  "data": {
+    "option": {
+      "id": "custom",
+      "name": "Sunny Garden Ring",
+      "intent": "A compact ring of shallow townhouse wings wraps a green courtyard, turned to the sun so the long facades face south and north. Shallow depth and a modest footprint serve daylight and open space while still carrying the homes.",
+      "tradeOffs": [
+        "Small footprint leaves a modest courtyard",
+        "Shallow wings limit unit layout flexibility",
+        "Pitched roof adds cost and complexity"
+      ],
+      "params": {
+        "typology": "courtyard",
+        "floors": 5,
+        "groundFloorHeight": 3.5,
+        "floorHeight": 3,
+        "depth": 9,
+        "alignment": "sun",
+        "coverageTarget": 0.22,
+        "roof": "pitched",
+        "colour": "#7a4fb0"
+      },
+      "clamps": [
+        "Courtyard: at this coverage target no 8 m court fits, so it is built as a solid block."
+      ],
+      "metrics": {
+        "footprint": 430.95803216307013,
+        "gfa": 2154.7901608153506,
+        "far": 1.0993827351098728,
+        "coverage": 0.21987654702197457,
+        "height": 19.27594834029776,
+        "floors": 5,
+        "estUnits": 24,
+        "facadeSunScore": 0.4089749411716104
+      },
+      "compliance": [
+        {
+          "rule": "Allowed functions",
+          "status": "fail",
+          "detail": "Residential is not among \"Mixed-use\" (extracted)"
+        },
+        {
+          "rule": "Max building height",
+          "status": "pass",
+          "detail": "19.3 m ≤ 34 m (extracted)"
+        },
+        {
+          "rule": "Max gutter height",
+          "status": "unknown",
+          "detail": "Rule unknown; the massing has 15.5 m."
+        },
+        {
+          "rule": "Max coverage (0–1)",
+          "status": "pass",
+          "detail": "0.22 ≤ 0.60 (assumed)"
+        },
+        {
+          "rule": "Max FAR",
+          "status": "pass",
+          "detail": "1.10 ≤ 1.50 (assumed)"
+        },
+        {
+          "rule": "Parking norm",
+          "status": "unknown",
+          "detail": "Needs 15 spaces (24 units × 0.6/unit, assumed); parking is not modelled."
+        },
+        {
+          "rule": "Inside buildable envelope",
+          "status": "pass",
+          "detail": "Inside the bouwvlak envelope (extracted)"
+        }
+      ]
+    },
+    "warnings": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "strategyGenerator.v2",
+    "attempts": 1,
+    "costUsd": 0.017211999999999998,
+    "cached": false
+  }
+}

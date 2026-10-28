@@ -1,0 +1,84 @@
+{
+  "ok": true,
+  "data": {
+    "option": {
+      "id": "custom",
+      "name": "Sunny Low Slab",
+      "intent": "A slim east-west slab with long facades facing north and south, so every apartment gets bright, dual-aspect light. It stays modest in height to respect the neighbours and leaves the rest of the plot open.",
+      "tradeOffs": [
+        "Fewer homes than the programme asks for",
+        "Less floor area than a taller block",
+        "Limited open space due to a full-width bar"
+      ],
+      "params": {
+        "typology": "slab",
+        "floors": 3,
+        "groundFloorHeight": 3,
+        "floorHeight": 2.8,
+        "depth": 8,
+        "alignment": "sun",
+        "coverageTarget": 0.55,
+        "roof": "flat",
+        "colour": "#7a4fb0"
+      },
+      "clamps": [
+        "Asked for 3 floors; max FAR 1.50 (assumed) allows 2 (GFA 122 m² on a 111 m² parcel)."
+      ],
+      "metrics": {
+        "footprint": 60.80700385588861,
+        "gfa": 121.61400771177722,
+        "far": 1.0956216910970922,
+        "coverage": 0.5478108455485461,
+        "height": 5.8,
+        "floors": 2,
+        "estUnits": 1,
+        "facadeSunScore": 0.6006768397140276
+      },
+      "compliance": [
+        {
+          "rule": "Allowed functions",
+          "status": "pass",
+          "detail": "Residential fits \"Wonen\" (assumed)"
+        },
+        {
+          "rule": "Max building height",
+          "status": "pass",
+          "detail": "5.8 m ≤ 15 m (assumed)"
+        },
+        {
+          "rule": "Max gutter height",
+          "status": "unknown",
+          "detail": "Rule unknown; the massing has 5.8 m."
+        },
+        {
+          "rule": "Max coverage (0–1)",
+          "status": "pass",
+          "detail": "0.55 ≤ 0.60 (assumed)"
+        },
+        {
+          "rule": "Max FAR",
+          "status": "pass",
+          "detail": "1.10 ≤ 1.50 (assumed)"
+        },
+        {
+          "rule": "Parking norm",
+          "status": "unknown",
+          "detail": "Needs 1 spaces (1 units × 0.6/unit, assumed); parking is not modelled."
+        },
+        {
+          "rule": "Inside buildable envelope",
+          "status": "pass",
+          "detail": "Inside the setbacks envelope (assumed)"
+        }
+      ]
+    },
+    "warnings": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "strategyGenerator.v2",
+    "attempts": 1,
+    "costUsd": 0.019068999999999996,
+    "cached": false
+  }
+}

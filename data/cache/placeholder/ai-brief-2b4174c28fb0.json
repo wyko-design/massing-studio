@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "data": {
+    "programme": {
+      "targetUnits": 12,
+      "avgUnitSize": 65,
+      "netToGross": 0.75
+    },
+    "changes": [],
+    "priorities": {
+      "units": 3,
+      "daylight": 4,
+      "lowProfile": 2,
+      "openSpace": 4,
+      "simplicity": 3
+    },
+    "typologyHints": [
+      "courtyard"
+    ],
+    "summary": "The brief asks for a ring of townhouse-style apartments around a green courtyard garden, five storeys high, oriented to the sun. I read it as a courtyard typology with a strong wish for daylight and a usable garden, and no stated unit count or sizes.",
+    "unclear": [
+      "Pitched roofs are requested but the tool only builds simple volumes, so the roof form cannot be checked.",
+      "A closed ring around a courtyard can conflict with turning the homes towards the sun, since some wings will face away from it.",
+      "Townhouse apartments suggest ground-related homes, which sits oddly with five storeys.",
+      "The number of homes and the unit size are not given.",
+      "The gutter height limit is unknown, so the fit of a pitched roof at five storeys cannot be confirmed."
+    ],
+    "clamps": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "briefInterpreter.v1",
+    "attempts": 1,
+    "costUsd": 0.007462799999999999,
+    "cached": false
+  }
+}

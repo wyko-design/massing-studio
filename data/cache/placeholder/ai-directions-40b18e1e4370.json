@@ -1,0 +1,84 @@
+{
+  "ok": true,
+  "data": {
+    "option": {
+      "id": "custom",
+      "name": "Sunlit Garden Ring",
+      "intent": "A slim courtyard ring of pitched-roof townhouse apartments wraps a generous green garden, with the long facades turned to the sun. It favours daylight and open space while still giving a healthy number of homes.",
+      "tradeOffs": [
+        "Taller than a low-profile fit with neighbours would suggest",
+        "Ring form is less simple to build than a single bar",
+        "Some floor area is left unused to protect the garden"
+      ],
+      "params": {
+        "typology": "courtyard",
+        "floors": 5,
+        "groundFloorHeight": 3.5,
+        "floorHeight": 3,
+        "depth": 8,
+        "alignment": "sun",
+        "coverageTarget": 0.3,
+        "roof": "pitched",
+        "colour": "#7a4fb0"
+      },
+      "clamps": [
+        "Coverage target 0.30 reached 0.20: a courtyard 8 m deep fits at most 390 m² in the 1962 m² envelope."
+      ],
+      "metrics": {
+        "footprint": 390.0114230254891,
+        "gfa": 1950.0571151274453,
+        "far": 0.9949270995548191,
+        "coverage": 0.19898541991096383,
+        "height": 18.85639852470912,
+        "floors": 5,
+        "estUnits": 22,
+        "facadeSunScore": 0.3883207409515348
+      },
+      "compliance": [
+        {
+          "rule": "Allowed functions",
+          "status": "fail",
+          "detail": "Residential is not among \"Mixed-use\" (extracted)"
+        },
+        {
+          "rule": "Max building height",
+          "status": "pass",
+          "detail": "18.9 m ≤ 34 m (extracted)"
+        },
+        {
+          "rule": "Max gutter height",
+          "status": "unknown",
+          "detail": "Rule unknown; the massing has 15.5 m."
+        },
+        {
+          "rule": "Max coverage (0–1)",
+          "status": "pass",
+          "detail": "0.20 ≤ 0.60 (assumed)"
+        },
+        {
+          "rule": "Max FAR",
+          "status": "pass",
+          "detail": "0.99 ≤ 1.50 (assumed)"
+        },
+        {
+          "rule": "Parking norm",
+          "status": "unknown",
+          "detail": "Needs 14 spaces (22 units × 0.6/unit, assumed); parking is not modelled."
+        },
+        {
+          "rule": "Inside buildable envelope",
+          "status": "pass",
+          "detail": "Inside the bouwvlak envelope (extracted)"
+        }
+      ]
+    },
+    "warnings": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "strategyGenerator.v2",
+    "attempts": 1,
+    "costUsd": 0.015115,
+    "cached": false
+  }
+}

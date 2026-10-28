@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "data": {
+    "programme": {
+      "targetUnits": 12,
+      "avgUnitSize": 65,
+      "netToGross": 0.75
+    },
+    "changes": [],
+    "priorities": {
+      "units": 3,
+      "daylight": 5,
+      "lowProfile": 2,
+      "openSpace": 5,
+      "simplicity": 2
+    },
+    "typologyHints": [
+      "courtyard"
+    ],
+    "summary": "The brief asks for a ring of slim wings around a large green courtyard garden, with pitched roofs, oriented towards the sun. Daylight and open garden space matter most, while unit count and size are not set.",
+    "unclear": [
+      "The brief does not say how many homes are wanted or how large they should be.",
+      "Five storeys together with a pitched roof may be tall for the neighbours, and the gutter height limit is unknown.",
+      "A large courtyard together with a full ring of wings may conflict with the coverage and floor area limits, and a ring may not fit the buildable area.",
+      "Turned towards the sun is not tied to a compass direction, so it is unclear which side should open up."
+    ],
+    "clamps": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "briefInterpreter.v1",
+    "attempts": 1,
+    "costUsd": 0.0121046,
+    "cached": false
+  }
+}

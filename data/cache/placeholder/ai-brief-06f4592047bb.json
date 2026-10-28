@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "data": {
+    "programme": {
+      "targetUnits": 6,
+      "avgUnitSize": 50,
+      "netToGross": 0.75
+    },
+    "changes": [
+      {
+        "field": "targetUnits",
+        "briefQuote": "Six starter apartments"
+      },
+      {
+        "field": "avgUnitSize",
+        "briefQuote": "starter apartments"
+      }
+    ],
+    "priorities": {
+      "units": 3,
+      "daylight": 5,
+      "lowProfile": 4,
+      "openSpace": 3,
+      "simplicity": 3
+    },
+    "typologyHints": [],
+    "summary": "The brief asks for a small building of starter apartments for young couples, with strong emphasis on daylight and a low edge facing the neighbours. Starter apartments suggest fairly compact homes.",
+    "unclear": [
+      "The brief does not say which side the neighbours are on, so the low edge cannot be placed with certainty.",
+      "No form or typology is requested.",
+      "Exact apartment size is not given, only implied by the word starter."
+    ],
+    "clamps": []
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "briefInterpreter.v1",
+    "attempts": 1,
+    "costUsd": 0.016929,
+    "cached": false
+  }
+}
