@@ -2,9 +2,11 @@ import { OPTION_IDS, type OptionId, computeMassing, optionParams, optionText, us
 import { useSiteStore } from "../state/siteStore";
 import { usePresentStore } from "../state/presentStore";
 import * as api from "../api/ai";
-import { resolveEnvelope, isPlaceholder } from "@massing/shared";
+import { resolveEnvelope } from "@massing/shared";
 import { buildReportModel, type ReportInput } from "./model";
-import { buildPdf } from "./pdf";
+import { buildPdf, type ReportFonts } from "./pdf";
+import plexRegularUrl from "./fonts/ibm-plex-mono-400.ttf?url";
+import plexSemiboldUrl from "./fonts/ibm-plex-mono-600.ttf?url";
 
 export type ReportProgress = (message: string) => void;
 export type ReportResult = { url: string; fileName: string; bytes: number; narrative: "written" | "cached" | "skipped" | "failed"; narrativeError?: string };
@@ -24,14 +26,14 @@ export async function generateReport(opts: { narrative: boolean }, progress: Rep
   const { programme, custom } = useMassingStore.getState();
 
   // the four presets, and the custom option when there is one
-  const options: ReportInput["options"] = [];
+  const options: (ReportInput["options"][number] & { intent: string })[] = [];
   for (const id of OPTION_IDS) {
     const params = optionParams(id);
     if (!params) continue;
     const result = computeMassing(id);
     if (!result) throw new Error("Could not compute the options.");
     const text = optionText(id, custom);
-    options.push({ id, params, result, name: text.name, ...(text.intent ? { intent: text.intent } : {}), tradeOffs: text.tradeOffs });
+    options.push({ id, params, result, name: text.name, intent: text.intent ?? "", tradeOffs: text.tradeOffs });
   }
 
   // renders: every option from the same view, the one on screen
@@ -60,7 +62,7 @@ export async function generateReport(opts: { narrative: boolean }, progress: Rep
         options: options.map((o) => ({
           id: o.id as OptionId,
           name: o.name!,
-          intent: o.intent ?? "",
+          intent: o.intent,
           tradeOffs: o.tradeOffs ?? [],
           params: o.params,
           clamps: o.result.clamps,
@@ -82,11 +84,10 @@ export async function generateReport(opts: { narrative: boolean }, progress: Rep
     envelope,
     programme,
     options,
-    placeholder: isPlaceholder(constraints, envelope),
     date: new Date().toISOString().slice(0, 10),
     narrative,
   });
-  const bytes = await buildPdf(model, { cover, options: optionImages });
+  const bytes = await buildPdf(model, { cover, options: optionImages }, await loadFonts());
   const fileName = `massing-report-${fileSafe(scene.parcel.id)}.pdf`;
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
   const a = document.createElement("a");
@@ -95,3 +96,6 @@ export async function generateReport(opts: { narrative: boolean }, progress: Rep
   a.click();
   return { url, fileName, bytes: bytes.length, narrative: narrativeState, ...(narrativeError ? { narrativeError } : {}) };
 }
+
+const fontBytes = async (url: string) => new Uint8Array(await (await fetch(url)).arrayBuffer());
+const loadFonts = async (): Promise<ReportFonts> => ({ regular: await fontBytes(plexRegularUrl), semibold: await fontBytes(plexSemiboldUrl) });

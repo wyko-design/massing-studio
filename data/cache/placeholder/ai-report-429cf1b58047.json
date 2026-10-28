@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "data": {
+    "sections": [
+      {
+        "id": "site",
+        "title": "Site and context",
+        "text": "The study covers the plot at Hendrik Casimirstraat 8, 2628KJ Delft, cadastral parcel DEL00 K 2410, with a parcel area of 111 m². The street side lies on a bearing of 67° from the parcel, which sets the orientation of the street frontage. This is a small, narrow plot, so the buildable envelope is tight in every direction. Details of neighbouring buildings are not given and are treated as unknown."
+      },
+      {
+        "id": "constraints",
+        "title": "Planning rules and certainty",
+        "text": "Most rules are assumptions, not verified. Allowed function is assumed to be Wonen. Maximum height is assumed at 15 m. Setbacks are assumed at 2 m to the street, 0 m at the sides and 5 m at the rear. Maximum coverage is assumed at 0.6, and the parking norm at 0.6 spaces/unit. Only the street side bearing, 67°, is extracted. No value here is verified or a user override. The actual zoning plan, any heritage or neighbour constraints, and the real parking requirement are unknown and must be checked."
+      },
+      {
+        "id": "options",
+        "title": "The four options",
+        "text": "The homes option is a closed block to the street, built as full and tall as the rules allow. It gives up open space and inner-corner daylight. Its requested depth was clamped to the envelope's width across the building axis, and the courtyard layout did not fit the narrow envelope, so it is built as a slab. The daylight option is one shallow east–west slab so the long facades face south. It gives up unit count, ignores the street line and has long exposed facades. The garden option is the smallest footprint stacked to the height limit, leaving most of the plot green. It is tall next to its neighbours, has few homes per floor, needs lifts and a deeper structure, and its depth was also clamped to the envelope. The low option is a pitched L-block that follows the street and respects the scale of nearby houses. It has the fewest floors and so fewer homes, covers more ground than the taller options, and its roof space is only partly usable."
+      },
+      {
+        "id": "comparison",
+        "title": "How the options compare",
+        "text": "The homes option has a footprint of 66 m², floor area of 266 m², a floor area ratio of 2.39, coverage of 0.60, and about 3 units over 4 floors. Its facade sun score is 0.60. It serves floor area and unit count. The daylight option has 155 m² of floor area, coverage of 0.35, about 1 unit and a sun score of 0.42. It prioritises daylight through its orientation. The garden option has 89 m² of floor area, coverage of 0.20, about 1 unit and the highest sun score, 0.75, serving greenery and light. The low option has 149 m² of floor area over 3 floors, a height of 13.7 m, coverage of 0.45, about 1 unit and a sun score of 0.59. It serves fit with the surrounding scale. The three taller options each reach 12.5 m. These figures show trade-offs between priorities, not compliance or viability."
+      },
+      {
+        "id": "limitations",
+        "title": "Limitations",
+        "text": "This is an indicative early massing study. It is not a permit check and not a financial appraisal. Boundary geometry is indicative and may differ from the surveyed parcel. Nearly all planning values are assumed and must be checked against the current zoning plan. Unit counts, sun scores and parking implications are rough estimates and need design development and specialist review."
+      }
+    ]
+  },
+  "meta": {
+    "model": "claude-sonnet-5-5",
+    "promptVersion": "reportWriter.v1",
+    "attempts": 1,
+    "costUsd": 0.0179578,
+    "cached": false
+  }
+}

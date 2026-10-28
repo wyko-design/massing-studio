@@ -95,7 +95,7 @@ function useStudioScene() {
             streetSide: constraints?.streetSide?.value ?? null,
             annotations: present.annotations,
             streetLabels: present.streetLabels,
-            placeholder,
+            placeholder: placeholder && present.job.deliver !== "report",
           })
         : null,
     [scene, present.job, envelope, showEnvelope, shown, option, name, constraints, present.annotations, present.streetLabels, placeholder],
