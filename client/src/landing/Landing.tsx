@@ -11,7 +11,7 @@ import { contextRadius, modelStyle } from "./model/modelStyle";
 import { fetchPlotContext } from "./geoApi";
 import { fetchScene } from "../api/scene";
 import type { PlotData } from "./globe/plotLayer";
-import { useConstraints, useEnvelope, usePlaceholder, useSiteStore } from "../state/siteStore";
+import { useConstraints, useEnvelope, useSiteStore } from "../state/siteStore";
 import { computeMassing, useMassing, useMassingStore, useOptionText } from "../state/massingStore";
 import { usePresentStore } from "../state/presentStore";
 import { buildOverlay } from "../present/labels";
@@ -74,7 +74,6 @@ function useStudioScene() {
   const showEnvelope = useSiteStore((s) => s.showEnvelope);
   const envelope = useEnvelope();
   const constraints = useConstraints();
-  const placeholder = usePlaceholder();
   const active = useMassingStore((s) => s.active);
   const massing = useMassing(active);
   const present = usePresentStore();
@@ -95,10 +94,9 @@ function useStudioScene() {
             streetSide: constraints?.streetSide?.value ?? null,
             annotations: present.annotations,
             streetLabels: present.streetLabels,
-            placeholder: placeholder && present.job.deliver !== "report",
           })
         : null,
-    [scene, present.job, envelope, showEnvelope, shown, option, name, constraints, present.annotations, present.streetLabels, placeholder],
+    [scene, present.job, envelope, showEnvelope, shown, option, name, constraints, present.annotations, present.streetLabels],
   );
   return { proposal: shown?.volumes ?? null, showEnvelope, overlay, look: present.style.look, labels: present.style.labels };
 }

@@ -562,8 +562,7 @@ function LabelLayer({ canvas, overlay, affine, style }: { canvas: { current: HTM
     const ctx = el.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
-    // the placeholder watermark goes into exports only, not over the model on screen
-    drawOverlay(ctx, { ...overlay, watermark: false }, sceneProject(state.camera, width, height, affine), { width, height }, dpr, style);
+    drawOverlay(ctx, overlay, sceneProject(state.camera, width, height, affine), { width, height }, dpr, style);
   });
   return null;
 }

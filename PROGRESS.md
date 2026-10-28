@@ -1087,3 +1087,8 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
 - **Checked:** 445 tests (report tests rewritten: 3 pages, 5 options + long narrative + odd characters), typecheck, build (TTFs emitted as assets); browser 1440×928 (massing-api-5 + massing-web-5): PDF made in the page and rendered with pdf.js, without (3 pages) and with the AI narrative (4 pages, "written").
 - **Deviations from SPEC.md:** §11 report is shorter: no data-source list, no per-option compliance detail or clamp list (counts only), no comparison table (each option carries its numbers); the placeholder state is no longer stamped on the report (statuses "assumed" stay in the rules table).
 - **Open issues:** the AI narrative is long for a concise report (its prompt could ask for less); PNG exports still have the watermark.
+
+## No placeholder watermark on any export (2026-10-28)
+- **Built:** the watermark is gone from the label layer altogether: `drawWatermark` removed from `present/drawOverlay.ts`, `Overlay.watermark` and `LabelInput.placeholder` removed (`present/labels.ts`), `Landing.tsx` no longer reads `usePlaceholder()` (still exported from `siteStore`, now unused). The SVG export never drew it.
+- **Checked:** 445 tests, typecheck, build; browser 1440×928: PNG export 2160 × 2160 px from the Export panel, no watermark.
+- **Deviations from SPEC.md / CLAUDE.md:** exports no longer mark placeholder planning values (P9 watermark); assumed values still show as "assumed" in the PDF's rules table.

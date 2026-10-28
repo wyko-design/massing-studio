@@ -34,8 +34,6 @@ export type Overlay = {
   labels: Label[];
   /** Lines in the bottom-left corner of the frame. */
   caption: string[];
-  /** Placeholder data watermark. */
-  watermark: boolean;
   /** Corners of the proposal (base and top): street names slide along the street to keep clear of it. */
   obstacles: P3[];
 };
@@ -86,7 +84,6 @@ export type LabelInput = {
   streetSide: number | null;
   annotations: boolean;
   streetLabels: boolean;
-  placeholder: boolean;
 };
 
 /** Every number in a label is formatted from computed values here; nothing comes from model text. */
@@ -148,5 +145,5 @@ export function buildOverlay(input: LabelInput): Overlay {
   const obstacles = (result?.volumes ?? []).flatMap((v) =>
     openRing(v.footprint.coordinates[0]!).flatMap((p) => [toWorld(p, v.zBase), toWorld(p, v.zBase + v.height + (v.roof?.ridgeHeight ?? 0))]),
   );
-  return { labels, caption, watermark: input.placeholder, obstacles };
+  return { labels, caption, obstacles };
 }

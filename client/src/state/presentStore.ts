@@ -54,7 +54,7 @@ const downloadWaiters = new Map<number, (result: ExportState) => void>();
 export const usePresentStore = create<PresentState>()((set, get) => ({
   style: { ...defaultRenderStyle, look: savedLook() },
   multiplier: 2,
-  // no text over the model (user's choice): exports carry only the placeholder watermark
+  // no text over the model in exports (user's choice)
   streetLabels: false,
   annotations: false,
   savedViews: loadSavedViews(),

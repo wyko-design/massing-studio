@@ -167,31 +167,8 @@ function screenBounds(points: P3[], project: Project): Rect | null {
   return x0 <= x1 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
 }
 
-function drawWatermark(ctx: CanvasRenderingContext2D, frame: FrameSize, s: LabelStyle) {
-  ctx.save();
-  ctx.translate(frame.width / 2, frame.height / 2);
-  ctx.rotate(-Math.atan2(frame.height, frame.width));
-  ctx.font = font(s, Math.round(Math.min(frame.width, frame.height) * 0.085), 600);
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(20,71,198,0.12)"; // the blue token, faint
-  ctx.fillText("PLACEHOLDER DATA", 0, 0);
-  ctx.restore();
-
-  const text = "PLACEHOLDER DATA · planning values assumed";
-  ctx.font = font(s, s.fontSize, 600);
-  const w = ctx.measureText(text).width + 2 * TAG_PAD_X;
-  const h = s.fontSize * LINE_GAP + 2 * TAG_PAD_Y;
-  ctx.fillStyle = s.tagBackground;
-  ctx.fillRect(frame.width - MARGIN - w, MARGIN, w, h);
-  ctx.fillStyle = s.tagColour;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, frame.width - MARGIN - w + TAG_PAD_X, MARGIN + h / 2);
-}
-
 /**
- * Draws labels, caption and watermark in frame px, scaled by `scale` (device or export pixel ratio).
+ * Draws labels and caption in frame px, scaled by `scale` (device or export pixel ratio).
  * The same function draws the on-screen overlay and the export composite.
  */
 export function drawOverlay(ctx: CanvasRenderingContext2D, overlay: Overlay, project: Project, frame: FrameSize, scale: number, s: LabelStyle) {
@@ -214,7 +191,6 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, overlay: Overlay, pro
       haloText(ctx, line, MARGIN, frame.height - MARGIN - (overlay.caption.length - 1 - i) * s.fontSize * LINE_GAP, s);
     });
   }
-  if (overlay.watermark) drawWatermark(ctx, frame, s);
   ctx.restore();
 }
 

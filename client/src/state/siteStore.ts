@@ -136,7 +136,7 @@ export function useEnvelope(): Envelope | null {
   return useMemo(() => (ring && constraints ? resolveEnvelope(ring, constraints) : null), [ring, constraints]);
 }
 
-/** True while any constraint or the envelope is `assumed`. Drives the badge now and the export watermark (P9). */
+/** True while any constraint or the envelope is `assumed`. */
 export function usePlaceholder(): boolean {
   const constraints = useConstraints();
   const envelope = useEnvelope();

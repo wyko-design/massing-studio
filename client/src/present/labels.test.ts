@@ -51,7 +51,6 @@ describe("buildOverlay", () => {
     streetSide: 65,
     annotations: true,
     streetLabels: true,
-    placeholder: true,
   };
 
   it("formats every number from the computed metrics", () => {
@@ -63,7 +62,6 @@ describe("buildOverlay", () => {
     expect(texts).toContain("Parcel DEL00 K 2410 · 111 m²");
     expect(texts).toContain("Envelope · max 15 m");
     expect(texts).toContain("Hendrik Casimirstraat");
-    expect(o.watermark).toBe(true);
     expect(o.obstacles.length).toBe(result.volumes.reduce((n, v) => n + 2 * (v.footprint.coordinates[0]!.length - 1), 0));
   });
 
