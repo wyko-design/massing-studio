@@ -9,6 +9,15 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     // found late (the site model is loaded on demand): pre-bundle it, or the first visit reloads the page mid-flow
     optimizeDeps: { include: ["three/examples/jsm/utils/BufferGeometryUtils.js"] },
+    // two pages: the SiteScope concept site at / and the tool itself at /tool.html
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(import.meta.dirname, "index.html"),
+          tool: path.resolve(import.meta.dirname, "tool.html"),
+        },
+      },
+    },
     server: {
       host: "127.0.0.1",
       port: Number(env.PORT || 5173),

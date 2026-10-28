@@ -1071,3 +1071,9 @@ Handoff log between Claude Code sessions. Append one entry per session at the bo
 ## Panel reveal keeps the line work; back arrow closer (2026-10-27)
 - **Built:** the studio panels' reveal now draws all lines, cells, tabs and band buttons at once while the window grows; only the contents (text, icons, fields, sliders, tags, button labels) are hidden and then fade in over 800 ms (`PanelFrame` phases growing → fading → done; studio.css hides content with transparent text / opacity 0 and puts the colour/opacity transitions on only during `fading`, so hovers keep their speed afterwards). The back arrow beside "Export" is 16 px wide with a −8 px margin: icon 17 px from the window edge (was 33), 8 px from the heading (was 12).
 - **Checked:** 446 tests, typecheck, build; browser 1680×1020 mid-grow (lines and cells drawn, no text) and after the fade.
+
+## SiteScope concept site in front of the tool (2026-10-28)
+- **Built:** the site now opens on the SiteScope concept page (the group's `SiteScope_Concept_Website_v5.html`, now `client/index.html`, static HTML, no React). The tool's entry moved to `client/tool.html` (`/tool.html`, hash routes `#studio/...` unchanged); `vite.config.ts` builds both pages (`build.rollupOptions.input`). Every "Explore SiteScope Delft" button links to `/tool.html`; the page's "tool not connected" notice is removed.
+- **Checked:** 446 tests, typecheck, build (dist has `index.html` + `tool.html`); production server (massing-api-5, 8811): `/` shows the concept page, the hero button opens the globe landing at `/tool.html`, no console errors.
+- **Deviations from SPEC.md:** the app is no longer at `/`; the concept page uses its own look (Inter, teal) and the name "SiteScope", while the tool is still titled Massing Studio.
+- **Open issues:** the tool has no link back to the concept page.
